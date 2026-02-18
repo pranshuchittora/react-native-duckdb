@@ -15,11 +15,15 @@ export class TestRunner {
       await test.run()
       const durationMs = Math.round(performance.now() - start)
       console.debug = originalDebug
+      console.log(`[TEST PASS] ${test.name} (${durationMs}ms)`)
       return { name: test.name, status: 'pass', durationMs, logs }
     } catch (e) {
       const durationMs = Math.round(performance.now() - start)
       console.debug = originalDebug
       const error = e instanceof Error ? e.message : String(e)
+      const stack = e instanceof Error ? e.stack : undefined
+      console.error(`[TEST FAIL] ${test.name}: ${error}`)
+      if (stack) console.error(stack)
       return { name: test.name, status: 'fail', durationMs, error, logs }
     }
   }
