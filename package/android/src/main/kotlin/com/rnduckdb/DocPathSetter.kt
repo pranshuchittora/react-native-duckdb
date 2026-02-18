@@ -1,14 +1,16 @@
 package com.rnduckdb
 
-import com.facebook.react.bridge.ReactApplicationContext
 import com.margelo.nitro.rnduckdb.RNDuckDBOnLoad
 
 object DocPathSetter {
+    private var didSet = false
+
     @JvmStatic
-    fun setDocPath(context: ReactApplicationContext) {
+    fun setDocPath(path: String) {
+        if (didSet) return
         RNDuckDBOnLoad.initializeNative()
-        val path = context.filesDir.absolutePath
         setDocPathInJNI(path)
+        didSet = true
     }
 
     private external fun setDocPathInJNI(docPath: String)
