@@ -1,0 +1,32 @@
+{
+  "name": "react-native-duckdb-workspace",
+  "version": "0.1.0",
+  "packageManager": "bun@1.3.1",
+  "private": true,
+  "workspaces": [
+    "package",
+    "example"
+  ],
+  "scripts": {
+    "typecheck": "bun --filter=\"**\" typecheck",
+    "lint": "bun package lint",
+    "clean": "rm -rf **/tsconfig.tsbuildinfo node_modules package/node_modules package/lib",
+    "package": "bun --cwd package",
+    "example": "bun --cwd example"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "react": "19.1.1",
+    "react-native": "0.82.1",
+    "react-native-nitro-modules": "0.33.5"
+  },
+  "devDependencies": {
+    "@react-native/babel-preset": "0.82.1",
+    "@react-native/metro-config": "0.82.1",
+    "nitrogen": "0.33.5",
+    "prettier": "^3.6.2",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+bun.lock
+
+# Build output
+lib/
+build/
+.cxx/
+.gradle/
+Pods/
+*.xcworkspace/
+
+# DuckDB amalgamation — downloaded by scripts/download-duckdb.sh
+# These files are 30-50MB and are fetched from DuckDB GitHub releases.
+# Run `./scripts/download-duckdb.sh` to populate package/vendor/duckdb/.
+package/vendor/duckdb/duckdb.cpp
+package/vendor/duckdb/duckdb.hpp
+package/vendor/duckdb/duckdb.h
+
+# iOS
+example/ios/Podfile.lock
+example/ios/Pods/
+example/ios/build/
+DerivedData/
+
+# Android
+example/android/.gradle/
+example/android/app/build/
+example/android/build/
+local.properties
+
+# Misc
+.DS_Store
+*.tsbuildinfo
+*.log

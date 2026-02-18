@@ -1,0 +1,16 @@
+{
+  "cxxNamespace": ["rnduckdb"],
+  "ios": {
+    "iosModuleName": "RNDuckDB"
+  },
+  "android": {
+    "androidNamespace": ["rnduckdb"],
+    "androidCxxLibName": "RNDuckDB"
+  },
+  "autolinking": {
+    "DuckDB": {
+      "cpp": "HybridDuckDB"
+    }
+  },
+  "ignorePaths": ["node_modules", "example", "lib", "vendor"]
+}

@@ -1,0 +1,66 @@
+name: Update DuckDB Amalgamation
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'DuckDB version to update to (e.g., v1.4.4). Leave empty to auto-detect latest.'
+        required: false
+        type: string
+
+jobs:
+  update-duckdb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get current version
+        id: current
+        run: |
+          if [ -f package/vendor/duckdb/VERSION ]; then
+            echo "version=$(cat package/vendor/duckdb/VERSION)" >> $GITHUB_OUTPUT
+          else
+            echo "version=none" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get target version
+        id: target
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            LATEST=$(curl -s https://api.github.com/repos/duckdb/duckdb/releases/latest | jq -r '.tag_name')
+            echo "version=$LATEST" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if update needed
+        id: check
+        run: |
+          if [ "${{ steps.current.outputs.version }}" = "${{ steps.target.outputs.version }}" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Already at version ${{ steps.target.outputs.version }}"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "Updating from ${{ steps.current.outputs.version }} to ${{ steps.target.outputs.version }}"
+          fi
+
+      - name: Download amalgamation
+        if: steps.check.outputs.skip != 'true'
+        run: ./scripts/download-duckdb.sh ${{ steps.target.outputs.version }}
+
+      - name: Create Pull Request
+        if: steps.check.outputs.skip != 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update DuckDB amalgamation to ${{ steps.target.outputs.version }}'
+          title: 'Update DuckDB to ${{ steps.target.outputs.version }}'
+          body: |
+            Automated DuckDB amalgamation update.
+
+            **Previous:** ${{ steps.current.outputs.version }}
+            **New:** ${{ steps.target.outputs.version }}
+
+            [Release notes](https://github.com/duckdb/duckdb/releases/tag/${{ steps.target.outputs.version }})
+          branch: chore/update-duckdb-${{ steps.target.outputs.version }}
+          labels: dependencies

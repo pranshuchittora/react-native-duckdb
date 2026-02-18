@@ -1,0 +1,10 @@
+{
+  "extends": "@react-native/typescript-config/tsconfig.json",
+  "include": ["src", "index.js", "../package/src"],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "react-native-duckdb": ["../package/src"]
+    }
+  }
+}
