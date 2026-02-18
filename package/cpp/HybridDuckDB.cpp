@@ -31,11 +31,11 @@ std::shared_ptr<HybridDatabaseSpec> HybridDuckDB::open(
 
   auto resolvedPath = resolvePath(docPath, path);
 
-  std::unique_ptr<duckdb::DuckDB> db;
+  std::shared_ptr<duckdb::DuckDB> db;
   if (resolvedPath == ":memory:") {
-    db = std::make_unique<duckdb::DuckDB>(nullptr, &dbConfig);
+    db = std::make_shared<duckdb::DuckDB>(nullptr, &dbConfig);
   } else {
-    db = std::make_unique<duckdb::DuckDB>(resolvedPath, &dbConfig);
+    db = std::make_shared<duckdb::DuckDB>(resolvedPath, &dbConfig);
   }
 
   auto con = std::make_unique<duckdb::Connection>(*db);
