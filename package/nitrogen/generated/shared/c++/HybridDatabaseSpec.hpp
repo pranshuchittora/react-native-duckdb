@@ -13,9 +13,21 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
+// Forward declaration of `HybridQueryResultSpec` to properly resolve imports.
+namespace margelo::nitro::rnduckdb { class HybridQueryResultSpec; }
+// Forward declaration of `HybridPreparedStatementSpec` to properly resolve imports.
+namespace margelo::nitro::rnduckdb { class HybridPreparedStatementSpec; }
 
-
-
+#include <memory>
+#include "HybridQueryResultSpec.hpp"
+#include <string>
+#include <NitroModules/Null.hpp>
+#include <NitroModules/ArrayBuffer.hpp>
+#include <variant>
+#include <vector>
+#include <optional>
+#include <NitroModules/Promise.hpp>
+#include "HybridPreparedStatementSpec.hpp"
 
 namespace margelo::nitro::rnduckdb {
 
@@ -49,6 +61,9 @@ namespace margelo::nitro::rnduckdb {
     public:
       // Methods
       virtual void close() = 0;
+      virtual std::shared_ptr<HybridQueryResultSpec> executeSync(const std::string& sql, const std::optional<std::vector<std::variant<nitro::NullType, int64_t, bool, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
+      virtual std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> execute(const std::string& sql, const std::optional<std::vector<std::variant<nitro::NullType, int64_t, bool, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
+      virtual std::shared_ptr<HybridPreparedStatementSpec> prepare(const std::string& sql) = 0;
 
     protected:
       // Hybrid Setup
