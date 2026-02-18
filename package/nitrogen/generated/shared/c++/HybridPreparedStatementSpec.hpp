@@ -57,8 +57,8 @@ namespace margelo::nitro::rnduckdb {
 
     public:
       // Methods
-      virtual std::shared_ptr<HybridQueryResultSpec> executeSync(const std::optional<std::vector<std::variant<nitro::NullType, int64_t, bool, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
-      virtual std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> execute(const std::optional<std::vector<std::variant<nitro::NullType, int64_t, bool, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
+      virtual std::shared_ptr<HybridQueryResultSpec> executeSync(const std::optional<std::vector<std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
+      virtual std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> execute(const std::optional<std::vector<std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
       virtual void finalize() = 0;
 
     protected:

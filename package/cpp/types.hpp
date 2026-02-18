@@ -14,8 +14,8 @@ namespace margelo::nitro::rnduckdb {
 using namespace margelo::nitro;
 
 // Matches the Nitrogen-generated variant for DuckDBValue:
-// TS: null | boolean | number | bigint | string | ArrayBuffer
-using DuckDBValue = std::variant<NullType, int64_t, bool, std::shared_ptr<ArrayBuffer>, std::string, double>;
+// TS: null | boolean | number | Int64 | string | ArrayBuffer
+using DuckDBValue = std::variant<NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>;
 using DuckDBParams = std::vector<DuckDBValue>;
 
 // Convert JS param values to DuckDB Values for PreparedStatement::Execute()

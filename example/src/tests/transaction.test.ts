@@ -95,51 +95,29 @@ TestRegistry.registerTest('Transactions', 'Transaction error context tracks stat
   }
 })
 
-TestRegistry.registerTest('Transactions', 'Nested transaction commit (savepoint)', async () => {
+TestRegistry.registerTest('Transactions', 'Nested transaction throws (DuckDB has no SAVEPOINT)', async () => {
   const db = createWrappedDatabase(HybridDuckDB.open(':memory:', {}))
   try {
     db.executeSync('CREATE TABLE t (id INTEGER, name VARCHAR)')
-    await db.transaction(async (tx) => {
-      tx.executeSync("INSERT INTO t VALUES (1, 'alice')")
-      await tx.transaction(async (nested) => {
-        nested.executeSync("INSERT INTO t VALUES (2, 'bob')")
-      })
-      tx.executeSync("INSERT INTO t VALUES (3, 'charlie')")
-    })
-    const result = db.executeSync('SELECT * FROM t ORDER BY id')
-    const rows = result.toRows()
-    console.debug(`nested commit rows: ${JSON.stringify(rows)}`)
-    if (rows.length !== 3) throw new Error(`Expected 3 rows, got ${rows.length}`)
-    if (rows[0].name !== 'alice') throw new Error(`Expected 'alice', got ${rows[0].name}`)
-    if (rows[1].name !== 'bob') throw new Error(`Expected 'bob', got ${rows[1].name}`)
-    if (rows[2].name !== 'charlie') throw new Error(`Expected 'charlie', got ${rows[2].name}`)
-  } finally {
-    db.close()
-  }
-})
-
-TestRegistry.registerTest('Transactions', 'Nested transaction rollback (savepoint)', async () => {
-  const db = createWrappedDatabase(HybridDuckDB.open(':memory:', {}))
-  try {
-    db.executeSync('CREATE TABLE t (id INTEGER, name VARCHAR)')
-    await db.transaction(async (tx) => {
-      tx.executeSync("INSERT INTO t VALUES (1, 'alice')")
-      try {
+    let threw = false
+    try {
+      await db.transaction(async (tx) => {
+        tx.executeSync("INSERT INTO t VALUES (1, 'alice')")
         await tx.transaction(async (nested) => {
           nested.executeSync("INSERT INTO t VALUES (2, 'bob')")
-          throw new Error('nested failure')
         })
-      } catch {
-        // expected — nested rollback
+      })
+    } catch (e: any) {
+      threw = true
+      console.debug(`nested tx error: ${e.message}`)
+      if (!e.message.includes('Nested transactions are not supported')) {
+        throw new Error(`Expected nested transaction error, got: ${e.message}`)
       }
-      tx.executeSync("INSERT INTO t VALUES (3, 'charlie')")
-    })
-    const result = db.executeSync('SELECT * FROM t ORDER BY id')
-    const rows = result.toRows()
-    console.debug(`nested rollback rows: ${JSON.stringify(rows)}`)
-    if (rows.length !== 2) throw new Error(`Expected 2 rows, got ${rows.length}`)
-    if (rows[0].name !== 'alice') throw new Error(`Expected 'alice', got ${rows[0].name}`)
-    if (rows[1].name !== 'charlie') throw new Error(`Expected 'charlie', got ${rows[1].name}`)
+    }
+    if (!threw) throw new Error('Expected nested transaction to throw')
+    // outer transaction should have been rolled back
+    const result = db.executeSync('SELECT * FROM t')
+    if (result.rowCount !== 0) throw new Error(`Expected 0 rows after rollback, got ${result.rowCount}`)
   } finally {
     db.close()
   }

@@ -87,46 +87,18 @@ function cleanupStatements(statements: PreparedStatement[]): void {
   }
 }
 
-async function executeNestedTransaction<T>(
-  conn: Database,
-  depth: number,
-  counter: { value: number },
-  callback: (tx: TransactionContext) => Promise<T>
+// DuckDB does not support SAVEPOINT — nested transactions are not possible.
+// Calling tx.transaction() throws a clear error instead of silently failing.
+function executeNestedTransaction<T>(
+  _conn: Database,
+  _depth: number,
+  _counter: { value: number },
+  _callback: (tx: TransactionContext) => Promise<T>
 ): Promise<T> {
-  const savepointName = `sp_${depth}_${Date.now()}`
-  conn.executeSync(`SAVEPOINT ${savepointName}`)
-
-  const trackedStatements: PreparedStatement[] = []
-  const ctx = createTransactionContext(conn, depth, counter)
-  // intercept prepare to track at this nesting level too
-  const originalPrepare = ctx.prepare
-  ctx.prepare = (sql: string): PreparedStatement => {
-    const stmt = originalPrepare(sql)
-    trackedStatements.push(stmt)
-    return stmt
-  }
-
-  try {
-    const result = await callback(ctx)
-    conn.executeSync(`RELEASE SAVEPOINT ${savepointName}`)
-    return result
-  } catch (error) {
-    try {
-      conn.executeSync(`ROLLBACK TO SAVEPOINT ${savepointName}`)
-    } catch {
-      // rollback failed — still rethrow original
-    }
-
-    const duckErr = DuckDBError.fromError(error)
-    duckErr.transaction = {
-      statementsExecuted: counter.value,
-      rolledBack: true,
-      depth,
-    }
-    throw duckErr
-  } finally {
-    cleanupStatements(trackedStatements)
-  }
+  throw new DuckDBError(
+    'Nested transactions are not supported. DuckDB does not have SAVEPOINT. ' +
+    'Restructure your code to use a single transaction level.'
+  )
 }
 
 export async function executeTransaction<T>(

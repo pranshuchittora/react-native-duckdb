@@ -112,7 +112,7 @@ std::shared_ptr<HybridDatabaseSpec> HybridDatabase::connect() {
   auto id = "conn_" + std::to_string(_connectionIdCounter.fetch_add(1));
   auto con = std::make_unique<duckdb::Connection>(*_db);
 
-  auto child = std::make_shared<HybridDatabase>(_db, std::move(con), id, _tracker);
+  auto child = std::make_shared<HybridDatabase>(_db, std::move(con), id, _tracker, _docPath);
   _tracker->add(id, child.get());
 
   return child;
@@ -156,7 +156,7 @@ void HybridDatabase::attach(const std::string& path, const std::string& alias,
                              const std::optional<AttachOptions>& options) {
   ensureOpen();
 
-  auto resolvedPath = resolvePath("", path);
+  auto resolvedPath = resolvePath(_docPath, path);
 
   std::string sql = "ATTACH '" + resolvedPath + "' AS " + alias;
 

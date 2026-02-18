@@ -53,18 +53,21 @@ struct ConnectionTracker {
 class HybridDatabase : public HybridDatabaseSpec {
 public:
   // Primary constructor — owns the DuckDB instance (shared)
-  HybridDatabase(std::shared_ptr<duckdb::DuckDB> db, std::unique_ptr<duckdb::Connection> con)
+  HybridDatabase(std::shared_ptr<duckdb::DuckDB> db, std::unique_ptr<duckdb::Connection> con,
+                 std::string docPath)
       : HybridObject(TAG), _db(std::move(db)), _con(std::move(con)),
         _isOpen(true), _isPrimary(true),
-        _id("primary"),
+        _id("primary"), _docPath(std::move(docPath)),
         _tracker(std::make_shared<ConnectionTracker>()) {}
 
   // Secondary constructor — connection created via connect()
   HybridDatabase(std::shared_ptr<duckdb::DuckDB> db, std::unique_ptr<duckdb::Connection> con,
-                 std::string id, std::shared_ptr<ConnectionTracker> tracker)
+                 std::string id, std::shared_ptr<ConnectionTracker> tracker,
+                 std::string docPath)
       : HybridObject(TAG), _db(std::move(db)), _con(std::move(con)),
         _isOpen(true), _isPrimary(false),
-        _id(std::move(id)), _tracker(std::move(tracker)) {}
+        _id(std::move(id)), _docPath(std::move(docPath)),
+        _tracker(std::move(tracker)) {}
 
   ~HybridDatabase() override {
     if (_isOpen) {
@@ -119,6 +122,7 @@ private:
   bool _isOpen;
   bool _isPrimary;
   std::string _id;
+  std::string _docPath;
   std::shared_ptr<ConnectionTracker> _tracker;
 
   static std::atomic<uint64_t> _connectionIdCounter;

@@ -79,8 +79,8 @@ namespace margelo::nitro::rnduckdb {
     public:
       // Methods
       virtual void close(const std::optional<CloseOptions>& options) = 0;
-      virtual std::shared_ptr<HybridQueryResultSpec> executeSync(const std::string& sql, const std::optional<std::vector<std::variant<nitro::NullType, int64_t, bool, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
-      virtual std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> execute(const std::string& sql, const std::optional<std::vector<std::variant<nitro::NullType, int64_t, bool, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
+      virtual std::shared_ptr<HybridQueryResultSpec> executeSync(const std::string& sql, const std::optional<std::vector<std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
+      virtual std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> execute(const std::string& sql, const std::optional<std::vector<std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
       virtual std::shared_ptr<HybridPreparedStatementSpec> prepare(const std::string& sql) = 0;
       virtual std::shared_ptr<HybridDatabaseSpec> connect() = 0;
       virtual ConnectionInfo connections() = 0;

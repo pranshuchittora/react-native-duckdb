@@ -40,7 +40,7 @@ std::shared_ptr<HybridDatabaseSpec> HybridDuckDB::open(
 
   auto con = std::make_unique<duckdb::Connection>(*db);
 
-  return std::make_shared<HybridDatabase>(std::move(db), std::move(con));
+  return std::make_shared<HybridDatabase>(std::move(db), std::move(con), docPath);
 }
 
 void HybridDuckDB::deleteDatabase(const std::string& path) {

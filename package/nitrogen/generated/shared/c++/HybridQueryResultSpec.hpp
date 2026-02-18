@@ -57,8 +57,8 @@ namespace margelo::nitro::rnduckdb {
 
     public:
       // Methods
-      virtual std::vector<std::variant<nitro::NullType, int64_t, bool, std::shared_ptr<ArrayBuffer>, std::string, double>> getColumn(double index) = 0;
-      virtual std::vector<std::unordered_map<std::string, std::variant<nitro::NullType, int64_t, bool, std::shared_ptr<ArrayBuffer>, std::string, double>>> toRows() = 0;
+      virtual std::vector<std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>> getColumn(double index) = 0;
+      virtual std::vector<std::unordered_map<std::string, std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>> toRows() = 0;
 
     protected:
       // Hybrid Setup
