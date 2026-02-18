@@ -13,3 +13,9 @@ export type {
   ConnectionInfo,
 } from './types'
 export { DuckDBError } from './DuckDBError'
+export { createWrappedDatabase, executeTransaction } from './transaction'
+export type {
+  WrappedDatabase,
+  TransactionContext,
+  TransactionInfo,
+} from './transaction'
