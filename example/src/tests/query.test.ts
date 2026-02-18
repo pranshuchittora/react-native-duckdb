@@ -76,22 +76,22 @@ TestRegistry.registerTest('Query Execution', 'Parameter types — null, boolean,
     db.executeSync('CREATE TABLE types_test (n_val INTEGER, b_val BOOLEAN, num_val DOUBLE, big_val BIGINT, str_val VARCHAR, blob_val BLOB)')
     const blob = new ArrayBuffer(4)
     new Uint8Array(blob).set([0xde, 0xad, 0xbe, 0xef])
-    // Use a bigint within safe integer range for param binding — Nitro variant
-    // bridge may coerce bigint to double, losing precision beyond 2^53.
-    // BIGINT output mapping is verified separately in the numeric type mapping test.
+    const bigInput = BigInt('9007199254740993')
+    console.debug(`bigint param type: ${typeof bigInput}, value: ${bigInput}`)
     db.executeSync('INSERT INTO types_test VALUES (?, ?, ?, ?, ?, ?)', [
-      null, true, 3.14, BigInt(42), 'test', blob,
+      null, true, 3.14, bigInput, 'test', blob,
     ])
     const result = db.executeSync('SELECT * FROM types_test')
     const rows = result.toRows()
-    console.debug(`types row: n_val=${rows[0].n_val}, b_val=${rows[0].b_val}, num_val=${rows[0].num_val}, big_val=${rows[0].big_val}, str_val=${rows[0].str_val}, blob_val type=${typeof rows[0].blob_val}`)
+    const bigOut = rows[0].big_val
+    console.debug(`types row: n_val=${rows[0].n_val}, b_val=${rows[0].b_val}, num_val=${rows[0].num_val}, big_val=${bigOut}(type=${typeof bigOut}), str_val=${rows[0].str_val}, blob_val type=${typeof rows[0].blob_val}`)
 
     if (rows[0].n_val !== null) throw new Error(`Expected n_val=null, got ${rows[0].n_val}`)
     if (rows[0].b_val !== true) throw new Error(`Expected b_val=true, got ${rows[0].b_val}`)
     if (Math.abs((rows[0].num_val as number) - 3.14) > 0.001) throw new Error(`Expected num_val≈3.14, got ${rows[0].num_val}`)
-    // BIGINT column value — check it round-tripped correctly (42 is within safe range)
-    const bigVal = rows[0].big_val
-    if (bigVal !== BigInt(42) && bigVal !== 42) throw new Error(`Expected big_val=42, got ${bigVal}`)
+    // BIGINT should round-trip as bigint — Nitro variant bridge handles int64_t <> BigInt
+    if (typeof bigOut !== 'bigint') throw new Error(`Expected big_val to be bigint, got ${typeof bigOut} (value: ${bigOut})`)
+    if (bigOut !== bigInput) throw new Error(`Expected big_val=${bigInput}n, got ${bigOut}n (typeof=${typeof bigOut})`)
     if (rows[0].str_val !== 'test') throw new Error(`Expected str_val='test', got ${rows[0].str_val}`)
     if (!(rows[0].blob_val instanceof ArrayBuffer)) throw new Error(`Expected blob_val to be ArrayBuffer, got ${typeof rows[0].blob_val}`)
     const blobOut = new Uint8Array(rows[0].blob_val as ArrayBuffer)

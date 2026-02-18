@@ -28,5 +28,8 @@
     "nitrogen": "0.33.5",
     "prettier": "^3.6.2",
     "typescript": "^5.8.3"
+  },
+  "patchedDependencies": {
+    "react-native-nitro-modules@0.33.5": "patches/react-native-nitro-modules@0.33.5.patch"
   }
 }
