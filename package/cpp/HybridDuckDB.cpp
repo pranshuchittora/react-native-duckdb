@@ -1,12 +1,59 @@
 #include "HybridDuckDB.hpp"
-#include "duckdb.h"
+#include "HybridDatabase.hpp"
+#include "utils.hpp"
+#include "duckdb.hpp"
+#include <cstdio>
+#include <stdexcept>
 
 namespace margelo::nitro::rnduckdb {
 
 std::string HybridDuckDB::docPath = "";
 
 std::string HybridDuckDB::getVersion() {
-  return std::string(duckdb_library_version());
+  return std::string(duckdb::DuckDB::LibraryVersion());
+}
+
+std::shared_ptr<HybridDatabaseSpec> HybridDuckDB::open(
+    const std::string& path,
+    const std::unordered_map<std::string, std::string>& config) {
+
+  duckdb::DBConfig dbConfig;
+
+  // Mobile-safe defaults
+  dbConfig.options.maximum_threads = 2;
+  dbConfig.options.maximum_memory = 256 * 1024 * 1024; // 256MB
+  dbConfig.options.use_temporary_directory = true;
+  dbConfig.options.temporary_directory = docPath + "/.duckdb_tmp";
+
+  // Apply user config overrides
+  for (const auto& [key, value] : config) {
+    dbConfig.SetOptionByName(key, duckdb::Value(value));
+  }
+
+  auto resolvedPath = resolvePath(docPath, path);
+
+  std::unique_ptr<duckdb::DuckDB> db;
+  if (resolvedPath == ":memory:") {
+    db = std::make_unique<duckdb::DuckDB>(nullptr, &dbConfig);
+  } else {
+    db = std::make_unique<duckdb::DuckDB>(resolvedPath, &dbConfig);
+  }
+
+  auto con = std::make_unique<duckdb::Connection>(*db);
+
+  return std::make_shared<HybridDatabase>(std::move(db), std::move(con));
+}
+
+void HybridDuckDB::deleteDatabase(const std::string& path) {
+  auto resolvedPath = resolvePath(docPath, path);
+
+  if (resolvedPath == ":memory:") {
+    throw std::runtime_error("[DuckDB] Cannot delete in-memory database");
+  }
+
+  std::remove(resolvedPath.c_str());
+  std::remove((resolvedPath + ".wal").c_str());
+  std::remove((resolvedPath + ".tmp").c_str());
 }
 
 size_t HybridDuckDB::getExternalMemorySize() noexcept {
