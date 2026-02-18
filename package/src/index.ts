@@ -3,5 +3,13 @@ export type { DuckDB } from './specs/DuckDB.nitro'
 export type { Database } from './specs/Database.nitro'
 export type { QueryResult } from './specs/QueryResult.nitro'
 export type { PreparedStatement } from './specs/PreparedStatement.nitro'
-export type { DuckDBConfig, DuckDBValue } from './types'
+export type {
+  DuckDBConfig,
+  DuckDBValue,
+  BatchCommand,
+  BatchResult,
+  AttachOptions,
+  CloseOptions,
+  ConnectionInfo,
+} from './types'
 export { DuckDBError } from './DuckDBError'

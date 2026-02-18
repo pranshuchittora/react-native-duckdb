@@ -13,11 +13,25 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
+// Forward declaration of `CloseOptions` to properly resolve imports.
+namespace margelo::nitro::rnduckdb { struct CloseOptions; }
 // Forward declaration of `HybridQueryResultSpec` to properly resolve imports.
 namespace margelo::nitro::rnduckdb { class HybridQueryResultSpec; }
 // Forward declaration of `HybridPreparedStatementSpec` to properly resolve imports.
 namespace margelo::nitro::rnduckdb { class HybridPreparedStatementSpec; }
+// Forward declaration of `HybridDatabaseSpec` to properly resolve imports.
+namespace margelo::nitro::rnduckdb { class HybridDatabaseSpec; }
+// Forward declaration of `ConnectionInfo` to properly resolve imports.
+namespace margelo::nitro::rnduckdb { struct ConnectionInfo; }
+// Forward declaration of `AttachOptions` to properly resolve imports.
+namespace margelo::nitro::rnduckdb { struct AttachOptions; }
+// Forward declaration of `BatchResult` to properly resolve imports.
+namespace margelo::nitro::rnduckdb { struct BatchResult; }
+// Forward declaration of `BatchCommand` to properly resolve imports.
+namespace margelo::nitro::rnduckdb { struct BatchCommand; }
 
+#include "CloseOptions.hpp"
+#include <optional>
 #include <memory>
 #include "HybridQueryResultSpec.hpp"
 #include <string>
@@ -25,9 +39,13 @@ namespace margelo::nitro::rnduckdb { class HybridPreparedStatementSpec; }
 #include <NitroModules/ArrayBuffer.hpp>
 #include <variant>
 #include <vector>
-#include <optional>
 #include <NitroModules/Promise.hpp>
 #include "HybridPreparedStatementSpec.hpp"
+#include "HybridDatabaseSpec.hpp"
+#include "ConnectionInfo.hpp"
+#include "AttachOptions.hpp"
+#include "BatchResult.hpp"
+#include "BatchCommand.hpp"
 
 namespace margelo::nitro::rnduckdb {
 
@@ -60,10 +78,17 @@ namespace margelo::nitro::rnduckdb {
 
     public:
       // Methods
-      virtual void close() = 0;
+      virtual void close(const std::optional<CloseOptions>& options) = 0;
       virtual std::shared_ptr<HybridQueryResultSpec> executeSync(const std::string& sql, const std::optional<std::vector<std::variant<nitro::NullType, int64_t, bool, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
       virtual std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> execute(const std::string& sql, const std::optional<std::vector<std::variant<nitro::NullType, int64_t, bool, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
       virtual std::shared_ptr<HybridPreparedStatementSpec> prepare(const std::string& sql) = 0;
+      virtual std::shared_ptr<HybridDatabaseSpec> connect() = 0;
+      virtual ConnectionInfo connections() = 0;
+      virtual void closeConnections() = 0;
+      virtual void attach(const std::string& path, const std::string& alias, const std::optional<AttachOptions>& options) = 0;
+      virtual void detach(const std::string& alias) = 0;
+      virtual BatchResult executeBatchSync(const std::vector<BatchCommand>& commands) = 0;
+      virtual std::shared_ptr<Promise<BatchResult>> executeBatch(const std::vector<BatchCommand>& commands) = 0;
 
     protected:
       // Hybrid Setup
