@@ -1,9 +1,13 @@
 #pragma once
 
 #include "HybridDatabaseSpec.hpp"
+#include "HybridQueryResult.hpp"
+#include "HybridPreparedStatementSpec.hpp"
+#include "types.hpp"
 #include "duckdb.hpp"
 #include <memory>
 #include <stdexcept>
+#include <NitroModules/Promise.hpp>
 
 namespace margelo::nitro::rnduckdb {
 
@@ -23,6 +27,18 @@ public:
   bool getIsOpen() override;
   void close() override;
   size_t getExternalMemorySize() noexcept override;
+
+  // Query execution
+  std::shared_ptr<HybridQueryResultSpec> executeSync(
+      const std::string& sql,
+      const std::optional<std::vector<DuckDBValue>>& params) override;
+
+  std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> execute(
+      const std::string& sql,
+      const std::optional<std::vector<DuckDBValue>>& params) override;
+
+  std::shared_ptr<HybridPreparedStatementSpec> prepare(
+      const std::string& sql) override;
 
 private:
   void ensureOpen();
