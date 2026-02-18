@@ -19,13 +19,12 @@ std::shared_ptr<HybridDatabaseSpec> HybridDuckDB::open(
 
   duckdb::DBConfig dbConfig;
 
-  // Mobile-safe defaults
-  dbConfig.options.maximum_threads = 2;
-  dbConfig.options.maximum_memory = 256 * 1024 * 1024; // 256MB
+  // Mobile-safe defaults via SetOptionByName (validates against compile-time capabilities)
+  dbConfig.SetOptionByName("memory_limit", duckdb::Value("256MB"));
   dbConfig.options.use_temporary_directory = true;
   dbConfig.options.temporary_directory = docPath + "/.duckdb_tmp";
 
-  // Apply user config overrides
+  // Apply user config overrides (may include threads, memory_limit, etc.)
   for (const auto& [key, value] : config) {
     dbConfig.SetOptionByName(key, duckdb::Value(value));
   }
