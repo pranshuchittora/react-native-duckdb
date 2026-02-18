@@ -1,4 +1,6 @@
 export class DuckDBError extends Error {
+  transaction?: { statementsExecuted: number; rolledBack: boolean; depth: number }
+
   constructor(message: string, options?: ErrorOptions) {
     super(message, options)
     this.name = 'DuckDBError'
