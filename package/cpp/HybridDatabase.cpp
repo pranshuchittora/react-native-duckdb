@@ -1,4 +1,5 @@
 #include "HybridDatabase.hpp"
+#include "HybridPreparedStatement.hpp"
 
 namespace margelo::nitro::rnduckdb {
 
@@ -62,8 +63,11 @@ std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> HybridDatabase:
 std::shared_ptr<HybridPreparedStatementSpec> HybridDatabase::prepare(
     const std::string& sql) {
   ensureOpen();
-  // Stub — full implementation in Plan 02
-  throw std::runtime_error("[DuckDB] PreparedStatement not yet implemented");
+  auto stmt = _con->Prepare(sql);
+  if (stmt->HasError()) {
+    throw std::runtime_error("[DuckDB] " + stmt->GetError());
+  }
+  return std::make_shared<HybridPreparedStatement>(std::move(stmt), *_con);
 }
 
 } // namespace margelo::nitro::rnduckdb
