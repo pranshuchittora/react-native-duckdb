@@ -11,7 +11,6 @@
 #import <type_traits>
 
 #include "HybridDuckDB.hpp"
-#include "HybridDatabase.hpp"
 
 @interface RNDuckDBAutolinking : NSObject
 @end
@@ -29,15 +28,6 @@
                     "The HybridObject \"HybridDuckDB\" is not default-constructible! "
                     "Create a public constructor that takes zero arguments to be able to autolink this HybridObject.");
       return std::make_shared<HybridDuckDB>();
-    }
-  );
-  HybridObjectRegistry::registerHybridObjectConstructor(
-    "Database",
-    []() -> std::shared_ptr<HybridObject> {
-      static_assert(std::is_default_constructible_v<HybridDatabase>,
-                    "The HybridObject \"HybridDatabase\" is not default-constructible! "
-                    "Create a public constructor that takes zero arguments to be able to autolink this HybridObject.");
-      return std::make_shared<HybridDatabase>();
     }
   );
 }
