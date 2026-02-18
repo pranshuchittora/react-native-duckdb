@@ -1,1 +1,1 @@
-// Shared type definitions — populated in Phase 2
+export type DuckDBConfig = Record<string, string>

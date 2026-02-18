@@ -13,9 +13,13 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
-
+// Forward declaration of `HybridDatabaseSpec` to properly resolve imports.
+namespace margelo::nitro::rnduckdb { class HybridDatabaseSpec; }
 
 #include <string>
+#include <memory>
+#include "HybridDatabaseSpec.hpp"
+#include <unordered_map>
 
 namespace margelo::nitro::rnduckdb {
 
@@ -48,7 +52,8 @@ namespace margelo::nitro::rnduckdb {
 
     public:
       // Methods
-      
+      virtual std::shared_ptr<HybridDatabaseSpec> open(const std::string& path, const std::unordered_map<std::string, std::string>& config) = 0;
+      virtual void deleteDatabase(const std::string& path) = 0;
 
     protected:
       // Hybrid Setup

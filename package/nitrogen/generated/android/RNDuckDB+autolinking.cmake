@@ -33,6 +33,7 @@ target_sources(
   # Autolinking Setup
   ../nitrogen/generated/android/RNDuckDBOnLoad.cpp
   # Shared Nitrogen C++ sources
+  ../nitrogen/generated/shared/c++/HybridDatabaseSpec.cpp
   ../nitrogen/generated/shared/c++/HybridDuckDBSpec.cpp
   # Android-specific Nitrogen C++ sources
   

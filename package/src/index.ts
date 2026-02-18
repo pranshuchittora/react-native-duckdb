@@ -1,2 +1,5 @@
 export { HybridDuckDB } from './nitro'
 export type { DuckDB } from './specs/DuckDB.nitro'
+export type { Database } from './specs/Database.nitro'
+export type { DuckDBConfig } from './types'
+export { DuckDBError } from './DuckDBError'

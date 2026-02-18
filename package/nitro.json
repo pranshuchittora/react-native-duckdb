@@ -10,6 +10,9 @@
   "autolinking": {
     "DuckDB": {
       "cpp": "HybridDuckDB"
+    },
+    "Database": {
+      "cpp": "HybridDatabase"
     }
   },
   "ignorePaths": ["node_modules", "example", "lib", "vendor"]
