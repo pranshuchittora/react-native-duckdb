@@ -1,6 +1,7 @@
 #include "HybridDatabase.hpp"
 #include "HybridPreparedStatement.hpp"
 #include "HybridStreamingResult.hpp"
+#include "HybridAppender.hpp"
 #include "utils.hpp"
 
 namespace margelo::nitro::rnduckdb {
@@ -182,6 +183,19 @@ std::shared_ptr<Promise<std::shared_ptr<HybridStreamingResultSpec>>> HybridDatab
       return std::make_shared<HybridStreamingResult>(
         std::move(result), std::move(streamCon));
     });
+}
+
+// --- Appender ---
+
+std::shared_ptr<HybridAppenderSpec> HybridDatabase::createAppender(
+    const std::string& table,
+    const std::optional<AppenderOptions>& options) {
+  ensureOpen();
+  std::optional<double> flushEvery;
+  if (options && options->flushEvery) {
+    flushEvery = *options->flushEvery;
+  }
+  return std::make_shared<HybridAppender>(*_con, table, flushEvery);
 }
 
 // --- ATTACH/DETACH ---

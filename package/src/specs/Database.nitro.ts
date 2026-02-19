@@ -6,10 +6,12 @@ import type {
   AttachOptions,
   CloseOptions,
   ConnectionInfo,
+  AppenderOptions,
 } from '../types'
 import type { QueryResult } from './QueryResult.nitro'
 import type { PreparedStatement } from './PreparedStatement.nitro'
 import type { StreamingResult } from './StreamingResult.nitro'
+import type { Appender } from './Appender.nitro'
 
 export interface Database extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   readonly isOpen: boolean
@@ -20,6 +22,9 @@ export interface Database extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
 
   // Streaming
   stream(sql: string, params?: DuckDBValue[]): Promise<StreamingResult>
+
+  // Appender
+  createAppender(table: string, options?: AppenderOptions): Appender
 
   // Connection management
   connect(): Database

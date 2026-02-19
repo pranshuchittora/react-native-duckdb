@@ -4,6 +4,7 @@
 #include "HybridQueryResult.hpp"
 #include "HybridPreparedStatementSpec.hpp"
 #include "HybridStreamingResultSpec.hpp"
+#include "HybridAppenderSpec.hpp"
 #include "types.hpp"
 #include "duckdb.hpp"
 #include <memory>
@@ -103,6 +104,11 @@ public:
   std::shared_ptr<Promise<std::shared_ptr<HybridStreamingResultSpec>>> stream(
       const std::string& sql,
       const std::optional<std::vector<DuckDBValue>>& params) override;
+
+  // Appender
+  std::shared_ptr<HybridAppenderSpec> createAppender(
+      const std::string& table,
+      const std::optional<AppenderOptions>& options) override;
 
   // Connection management
   std::shared_ptr<HybridDatabaseSpec> connect() override;

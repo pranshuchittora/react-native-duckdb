@@ -17,3 +17,4 @@ export type AttachOptions = { readOnly?: boolean; type?: string }
 export type CloseOptions = { force?: boolean }
 export type ConnectionInfo = { count: number; ids: string[] }
 export type StreamingOptions = { bufferSize?: number }
+export type AppenderOptions = { flushEvery?: number }
