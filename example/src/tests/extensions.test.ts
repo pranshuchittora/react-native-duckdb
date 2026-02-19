@@ -44,19 +44,21 @@ TestRegistry.registerTest('Extensions', 'LOAD: statically linked extensions load
 })
 
 TestRegistry.registerTest('Extensions', 'SQLite scanner: ATTACH and query SQLite database', async () => {
-  const db = HybridDuckDB.open('test_sqlite_ext.db', {})
+  // Unique filenames per run so tests always start fresh — deleteDatabase
+  // only removes .db files, not the .sqlite artifact created by the test.
+  const suffix = Date.now()
+  const dbName = `test_sqlite_ext_${suffix}.db`
+  const sqliteName = `test_scanner_${suffix}.sqlite`
+
+  const db = HybridDuckDB.open(dbName, {})
   try {
-    // Get the absolute path of the DB directory for constructing the sqlite path
     const dbListResult = db.executeSync('PRAGMA database_list')
     const dbPath = dbListResult.toRows()[0].file as string
     const dbDir = dbPath.substring(0, dbPath.lastIndexOf('/'))
-    const sqlitePath = `${dbDir}/test_scanner.sqlite`
+    const sqlitePath = `${dbDir}/${sqliteName}`
 
-    // Create a SQLite database via the sqlite_scanner extension.
-    // Drop first in case a leftover .sqlite file exists from a prior run
-    // (deleteDatabase only removes .db files, not the .sqlite artifact).
+    // Create a SQLite database via the sqlite_scanner extension
     db.executeSync(`ATTACH '${sqlitePath}' AS sqlitedb (TYPE SQLITE)`)
-    db.executeSync('DROP TABLE IF EXISTS sqlitedb.users')
     db.executeSync('CREATE TABLE sqlitedb.users (id INTEGER, name VARCHAR)')
     db.executeSync("INSERT INTO sqlitedb.users VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie')")
     db.executeSync('DETACH sqlitedb')
@@ -76,13 +78,15 @@ TestRegistry.registerTest('Extensions', 'SQLite scanner: ATTACH and query SQLite
     console.debug(`SQLite scanner: ${cnt} users, filtered name=${rows[0].name}`)
   } finally {
     db.close()
-    HybridDuckDB.deleteDatabase('test_sqlite_ext.db')
+    HybridDuckDB.deleteDatabase(dbName)
   }
 })
 
 TestRegistry.registerTest('Extensions', 'duckdb_extensions: verify loaded extensions', async () => {
   // Use a file-based DB to ensure home_directory is set (required by duckdb_extensions())
-  const db = HybridDuckDB.open('test_ext_list.db', {})
+  const suffix = Date.now()
+  const dbName = `test_ext_list_${suffix}.db`
+  const db = HybridDuckDB.open(dbName, {})
   try {
     const result = db.executeSync(
       "SELECT extension_name, loaded, installed FROM duckdb_extensions() WHERE loaded = true ORDER BY extension_name"
@@ -107,6 +111,6 @@ TestRegistry.registerTest('Extensions', 'duckdb_extensions: verify loaded extens
     console.debug(`sqlite_scanner installed=${sqliteRows[0].installed}`)
   } finally {
     db.close()
-    HybridDuckDB.deleteDatabase('test_ext_list.db')
+    HybridDuckDB.deleteDatabase(dbName)
   }
 })

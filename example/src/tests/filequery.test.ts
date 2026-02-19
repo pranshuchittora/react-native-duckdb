@@ -5,6 +5,7 @@ import { HybridDuckDB } from 'react-native-duckdb'
 // On mobile, the cwd is '/' (read-only). We must use absolute paths for all
 // COPY TO / FROM / SELECT FROM file operations. Pattern: open a file-based DB,
 // get the DB directory via PRAGMA database_list, build absolute paths from that.
+// Each test uses unique filenames (timestamp suffix) so tests always start fresh.
 
 function getDbDir(db: ReturnType<typeof HybridDuckDB.open>): string {
   const result = db.executeSync('PRAGMA database_list')
@@ -13,10 +14,12 @@ function getDbDir(db: ReturnType<typeof HybridDuckDB.open>): string {
 }
 
 TestRegistry.registerTest('File Queries', 'Parquet: write and read via file path', async () => {
-  const db = HybridDuckDB.open('test_filequery.db', {})
+  const suffix = Date.now()
+  const dbName = `test_filequery_${suffix}.db`
+  const db = HybridDuckDB.open(dbName, {})
   try {
     const dir = getDbDir(db)
-    const parquetPath = `${dir}/test.parquet`
+    const parquetPath = `${dir}/test_${suffix}.parquet`
 
     // Create test data
     db.executeSync(
@@ -39,16 +42,18 @@ TestRegistry.registerTest('File Queries', 'Parquet: write and read via file path
     console.debug(`Parquet read: ${cnt} rows, filtered name=${rows[0].name}`)
   } finally {
     db.close()
-    HybridDuckDB.deleteDatabase('test_filequery.db')
+    HybridDuckDB.deleteDatabase(dbName)
   }
 })
 
 TestRegistry.registerTest('File Queries', 'CSV: write and read via read_csv', async () => {
   // CSV reading is BUILT-IN — no extension needed
-  const db = HybridDuckDB.open('test_csv_fq.db', {})
+  const suffix = Date.now()
+  const dbName = `test_csv_fq_${suffix}.db`
+  const db = HybridDuckDB.open(dbName, {})
   try {
     const dir = getDbDir(db)
-    const csvPath = `${dir}/test.csv`
+    const csvPath = `${dir}/test_${suffix}.csv`
 
     db.executeSync(
       "CREATE TABLE test_csv AS SELECT i AS id, 'item_' || i AS label FROM range(50) t(i)"
@@ -70,16 +75,18 @@ TestRegistry.registerTest('File Queries', 'CSV: write and read via read_csv', as
     console.debug(`CSV read: ${cnt} rows, filtered label=${rows[0].label}`)
   } finally {
     db.close()
-    HybridDuckDB.deleteDatabase('test_csv_fq.db')
+    HybridDuckDB.deleteDatabase(dbName)
   }
 })
 
 TestRegistry.registerTest('File Queries', 'JSON: write and read via read_json', async () => {
   // JSON reading requires the `json` extension
-  const db = HybridDuckDB.open('test_json_fq.db', {})
+  const suffix = Date.now()
+  const dbName = `test_json_fq_${suffix}.db`
+  const db = HybridDuckDB.open(dbName, {})
   try {
     const dir = getDbDir(db)
-    const jsonPath = `${dir}/test.json`
+    const jsonPath = `${dir}/test_${suffix}.json`
 
     db.executeSync(
       "CREATE TABLE test_json AS SELECT i AS id, 'record_' || i AS tag FROM range(30) t(i)"
@@ -101,15 +108,17 @@ TestRegistry.registerTest('File Queries', 'JSON: write and read via read_json', 
     console.debug(`JSON read: ${cnt} rows, filtered tag=${rows[0].tag}`)
   } finally {
     db.close()
-    HybridDuckDB.deleteDatabase('test_json_fq.db')
+    HybridDuckDB.deleteDatabase(dbName)
   }
 })
 
 TestRegistry.registerTest('File Queries', 'Parquet: query with aggregation', async () => {
-  const db = HybridDuckDB.open('test_parquet_agg.db', {})
+  const suffix = Date.now()
+  const dbName = `test_parquet_agg_${suffix}.db`
+  const db = HybridDuckDB.open(dbName, {})
   try {
     const dir = getDbDir(db)
-    const parquetPath = `${dir}/agg.parquet`
+    const parquetPath = `${dir}/agg_${suffix}.parquet`
 
     db.executeSync(
       'CREATE TABLE agg_data AS SELECT i AS id, (i * 2.5) AS amount FROM range(100) t(i)'
@@ -131,15 +140,17 @@ TestRegistry.registerTest('File Queries', 'Parquet: query with aggregation', asy
     console.debug(`Parquet aggregation: total=${total}, avg=${average}`)
   } finally {
     db.close()
-    HybridDuckDB.deleteDatabase('test_parquet_agg.db')
+    HybridDuckDB.deleteDatabase(dbName)
   }
 })
 
 TestRegistry.registerTest('File Queries', 'CSV: read with custom options', async () => {
-  const db = HybridDuckDB.open('test_csv_custom.db', {})
+  const suffix = Date.now()
+  const dbName = `test_csv_custom_${suffix}.db`
+  const db = HybridDuckDB.open(dbName, {})
   try {
     const dir = getDbDir(db)
-    const csvPath = `${dir}/pipe.csv`
+    const csvPath = `${dir}/pipe_${suffix}.csv`
 
     db.executeSync(
       'CREATE TABLE custom_csv AS SELECT i AS col1, \'val_\' || i AS col2 FROM range(20) t(i)'
@@ -159,6 +170,6 @@ TestRegistry.registerTest('File Queries', 'CSV: read with custom options', async
     console.debug(`CSV custom options: ${rows.length} rows, first=${rows[0].col1}|${rows[0].col2}`)
   } finally {
     db.close()
-    HybridDuckDB.deleteDatabase('test_csv_custom.db')
+    HybridDuckDB.deleteDatabase(dbName)
   }
 })
