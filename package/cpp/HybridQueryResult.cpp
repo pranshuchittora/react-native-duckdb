@@ -118,10 +118,13 @@ void HybridQueryResult::materialize(duckdb::MaterializedQueryResult& result) {
             break;
           }
           case duckdb::LogicalTypeId::HUGEINT: {
-            // Truncate to int64_t for Phase 3 — Phase 5 can add full support
             auto data = duckdb::FlatVector::GetData<duckdb::hugeint_t>(vector);
-            auto val = duckdb::Hugeint::Cast<int64_t>(data[row]);
-            _columns[col].push_back(val);
+            _columns[col].push_back(duckdb::Hugeint::ToString(data[row]));
+            break;
+          }
+          case duckdb::LogicalTypeId::UHUGEINT: {
+            auto val = chunk.GetValue(static_cast<duckdb::idx_t>(col), row);
+            _columns[col].push_back(val.ToString());
             break;
           }
           case duckdb::LogicalTypeId::FLOAT: {
@@ -135,9 +138,32 @@ void HybridQueryResult::materialize(duckdb::MaterializedQueryResult& result) {
             break;
           }
           case duckdb::LogicalTypeId::DECIMAL: {
-            // Convert to double — precision loss acceptable for Phase 3
-            auto val = chunk.GetValue(static_cast<duckdb::idx_t>(col), row);
-            _columns[col].push_back(val.GetValue<double>());
+            auto width = duckdb::DecimalType::GetWidth(result.types[col]);
+            auto scale = duckdb::DecimalType::GetScale(result.types[col]);
+            switch (result.types[col].InternalType()) {
+              case duckdb::PhysicalType::INT16: {
+                auto data = duckdb::FlatVector::GetData<int16_t>(vector);
+                _columns[col].push_back(duckdb::Decimal::ToString(data[row], width, scale));
+                break;
+              }
+              case duckdb::PhysicalType::INT32: {
+                auto data = duckdb::FlatVector::GetData<int32_t>(vector);
+                _columns[col].push_back(duckdb::Decimal::ToString(data[row], width, scale));
+                break;
+              }
+              case duckdb::PhysicalType::INT64: {
+                auto data = duckdb::FlatVector::GetData<int64_t>(vector);
+                _columns[col].push_back(duckdb::Decimal::ToString(data[row], width, scale));
+                break;
+              }
+              case duckdb::PhysicalType::INT128: {
+                auto data = duckdb::FlatVector::GetData<duckdb::hugeint_t>(vector);
+                _columns[col].push_back(duckdb::Decimal::ToString(data[row], width, scale));
+                break;
+              }
+              default:
+                break;
+            }
             break;
           }
           case duckdb::LogicalTypeId::VARCHAR: {
@@ -154,8 +180,42 @@ void HybridQueryResult::materialize(duckdb::MaterializedQueryResult& result) {
             _columns[col].push_back(buf);
             break;
           }
+
+          // Temporal types — ISO string representations
+          case duckdb::LogicalTypeId::DATE:
+          case duckdb::LogicalTypeId::TIME:
+          case duckdb::LogicalTypeId::TIME_TZ:
+          case duckdb::LogicalTypeId::TIME_NS:
+          case duckdb::LogicalTypeId::INTERVAL: {
+            auto val = chunk.GetValue(static_cast<duckdb::idx_t>(col), row);
+            _columns[col].push_back(val.ToString());
+            break;
+          }
+          case duckdb::LogicalTypeId::TIMESTAMP:
+          case duckdb::LogicalTypeId::TIMESTAMP_SEC:
+          case duckdb::LogicalTypeId::TIMESTAMP_MS:
+          case duckdb::LogicalTypeId::TIMESTAMP_NS:
+          case duckdb::LogicalTypeId::TIMESTAMP_TZ: {
+            auto val = chunk.GetValue(static_cast<duckdb::idx_t>(col), row);
+            auto str = val.ToString();
+            auto spacePos = str.find(' ');
+            if (spacePos != std::string::npos && spacePos >= 10) {
+              str[spacePos] = 'T';
+            }
+            _columns[col].push_back(str);
+            break;
+          }
+
+          // Special types — string representations
+          case duckdb::LogicalTypeId::UUID:
+          case duckdb::LogicalTypeId::ENUM:
+          case duckdb::LogicalTypeId::BIT: {
+            auto val = chunk.GetValue(static_cast<duckdb::idx_t>(col), row);
+            _columns[col].push_back(val.ToString());
+            break;
+          }
+
           default: {
-            // Fallback: convert to string via duckdb::Value for unknown types
             auto val = chunk.GetValue(static_cast<duckdb::idx_t>(col), row);
             _columns[col].push_back(val.ToString());
             break;
