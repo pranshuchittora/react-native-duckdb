@@ -9,6 +9,7 @@ import type {
 } from '../types'
 import type { QueryResult } from './QueryResult.nitro'
 import type { PreparedStatement } from './PreparedStatement.nitro'
+import type { StreamingResult } from './StreamingResult.nitro'
 
 export interface Database extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   readonly isOpen: boolean
@@ -16,6 +17,9 @@ export interface Database extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   executeSync(sql: string, params?: DuckDBValue[]): QueryResult
   execute(sql: string, params?: DuckDBValue[]): Promise<QueryResult>
   prepare(sql: string): PreparedStatement
+
+  // Streaming
+  stream(sql: string, params?: DuckDBValue[]): Promise<StreamingResult>
 
   // Connection management
   connect(): Database

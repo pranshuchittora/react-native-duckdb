@@ -3,6 +3,7 @@
 #include "HybridDatabaseSpec.hpp"
 #include "HybridQueryResult.hpp"
 #include "HybridPreparedStatementSpec.hpp"
+#include "HybridStreamingResultSpec.hpp"
 #include "types.hpp"
 #include "duckdb.hpp"
 #include <memory>
@@ -97,6 +98,11 @@ public:
 
   std::shared_ptr<HybridPreparedStatementSpec> prepare(
       const std::string& sql) override;
+
+  // Streaming
+  std::shared_ptr<Promise<std::shared_ptr<HybridStreamingResultSpec>>> stream(
+      const std::string& sql,
+      const std::optional<std::vector<DuckDBValue>>& params) override;
 
   // Connection management
   std::shared_ptr<HybridDatabaseSpec> connect() override;

@@ -37,6 +37,7 @@ target_sources(
   ../nitrogen/generated/shared/c++/HybridDuckDBSpec.cpp
   ../nitrogen/generated/shared/c++/HybridPreparedStatementSpec.cpp
   ../nitrogen/generated/shared/c++/HybridQueryResultSpec.cpp
+  ../nitrogen/generated/shared/c++/HybridStreamingResultSpec.cpp
   # Android-specific Nitrogen C++ sources
   
 )

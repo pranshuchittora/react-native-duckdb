@@ -14,6 +14,12 @@ class HybridQueryResult : public HybridQueryResultSpec {
 public:
   explicit HybridQueryResult(std::unique_ptr<duckdb::QueryResult> result);
 
+  // Chunk constructor — used by streaming to wrap a single DataChunk
+  HybridQueryResult(size_t rowCount,
+                    std::vector<std::string> colNames,
+                    std::vector<std::string> colTypes,
+                    std::vector<std::vector<DuckDBValue>> columns);
+
   // Properties
   double getRowCount() override;
   double getRowsChanged() override;
@@ -26,6 +32,11 @@ public:
   std::vector<std::unordered_map<std::string, DuckDBValue>> toRows() override;
 
   size_t getExternalMemorySize() noexcept override;
+
+  // Shared helper: materialize a single DataChunk into columnar storage
+  static void materializeChunk(duckdb::DataChunk& chunk,
+                               const std::vector<duckdb::LogicalType>& types,
+                               std::vector<std::vector<DuckDBValue>>& columns);
 
 private:
   void materialize(duckdb::MaterializedQueryResult& result);

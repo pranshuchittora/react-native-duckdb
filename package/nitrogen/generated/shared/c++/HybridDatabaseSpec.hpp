@@ -19,6 +19,8 @@ namespace margelo::nitro::rnduckdb { struct CloseOptions; }
 namespace margelo::nitro::rnduckdb { class HybridQueryResultSpec; }
 // Forward declaration of `HybridPreparedStatementSpec` to properly resolve imports.
 namespace margelo::nitro::rnduckdb { class HybridPreparedStatementSpec; }
+// Forward declaration of `HybridStreamingResultSpec` to properly resolve imports.
+namespace margelo::nitro::rnduckdb { class HybridStreamingResultSpec; }
 // Forward declaration of `HybridDatabaseSpec` to properly resolve imports.
 namespace margelo::nitro::rnduckdb { class HybridDatabaseSpec; }
 // Forward declaration of `ConnectionInfo` to properly resolve imports.
@@ -41,6 +43,7 @@ namespace margelo::nitro::rnduckdb { struct BatchCommand; }
 #include <vector>
 #include <NitroModules/Promise.hpp>
 #include "HybridPreparedStatementSpec.hpp"
+#include "HybridStreamingResultSpec.hpp"
 #include "HybridDatabaseSpec.hpp"
 #include "ConnectionInfo.hpp"
 #include "AttachOptions.hpp"
@@ -82,6 +85,7 @@ namespace margelo::nitro::rnduckdb {
       virtual std::shared_ptr<HybridQueryResultSpec> executeSync(const std::string& sql, const std::optional<std::vector<std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
       virtual std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> execute(const std::string& sql, const std::optional<std::vector<std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
       virtual std::shared_ptr<HybridPreparedStatementSpec> prepare(const std::string& sql) = 0;
+      virtual std::shared_ptr<Promise<std::shared_ptr<HybridStreamingResultSpec>>> stream(const std::string& sql, const std::optional<std::vector<std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
       virtual std::shared_ptr<HybridDatabaseSpec> connect() = 0;
       virtual ConnectionInfo connections() = 0;
       virtual void closeConnections() = 0;

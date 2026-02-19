@@ -4,6 +4,16 @@
 
 namespace margelo::nitro::rnduckdb {
 
+HybridQueryResult::HybridQueryResult(size_t rowCount,
+                                     std::vector<std::string> colNames,
+                                     std::vector<std::string> colTypes,
+                                     std::vector<std::vector<DuckDBValue>> columns)
+    : HybridObject(TAG), _rowCount(rowCount), _rowsChanged(0),
+      _columnNames(std::move(colNames)), _columnTypes(std::move(colTypes)),
+      _columns(std::move(columns)) {
+  _columnCache.resize(_columnNames.size());
+}
+
 HybridQueryResult::HybridQueryResult(std::unique_ptr<duckdb::QueryResult> result)
     : HybridObject(TAG), _rowCount(0), _rowsChanged(0) {
   if (result->HasError()) {
@@ -413,6 +423,187 @@ size_t HybridQueryResult::getExternalMemorySize() noexcept {
     }
   }
   return base;
+}
+
+void HybridQueryResult::materializeChunk(
+    duckdb::DataChunk& chunk,
+    const std::vector<duckdb::LogicalType>& types,
+    std::vector<std::vector<DuckDBValue>>& columns) {
+  auto chunkSize = chunk.size();
+  auto colCount = types.size();
+
+  for (size_t col = 0; col < colCount; col++) {
+    auto& vector = chunk.data[col];
+    vector.Flatten(chunkSize);
+
+    auto& validity = duckdb::FlatVector::Validity(vector);
+    auto typeId = types[col].id();
+
+    for (duckdb::idx_t row = 0; row < chunkSize; row++) {
+      if (!validity.RowIsValid(row)) {
+        columns[col].push_back(nitro::null);
+        continue;
+      }
+
+      switch (typeId) {
+        case duckdb::LogicalTypeId::BOOLEAN: {
+          auto data = duckdb::FlatVector::GetData<bool>(vector);
+          columns[col].push_back(data[row]);
+          break;
+        }
+        case duckdb::LogicalTypeId::TINYINT: {
+          auto data = duckdb::FlatVector::GetData<int8_t>(vector);
+          columns[col].push_back(static_cast<double>(data[row]));
+          break;
+        }
+        case duckdb::LogicalTypeId::SMALLINT: {
+          auto data = duckdb::FlatVector::GetData<int16_t>(vector);
+          columns[col].push_back(static_cast<double>(data[row]));
+          break;
+        }
+        case duckdb::LogicalTypeId::INTEGER: {
+          auto data = duckdb::FlatVector::GetData<int32_t>(vector);
+          columns[col].push_back(static_cast<double>(data[row]));
+          break;
+        }
+        case duckdb::LogicalTypeId::BIGINT: {
+          auto data = duckdb::FlatVector::GetData<int64_t>(vector);
+          columns[col].push_back(data[row]);
+          break;
+        }
+        case duckdb::LogicalTypeId::UTINYINT: {
+          auto data = duckdb::FlatVector::GetData<uint8_t>(vector);
+          columns[col].push_back(static_cast<double>(data[row]));
+          break;
+        }
+        case duckdb::LogicalTypeId::USMALLINT: {
+          auto data = duckdb::FlatVector::GetData<uint16_t>(vector);
+          columns[col].push_back(static_cast<double>(data[row]));
+          break;
+        }
+        case duckdb::LogicalTypeId::UINTEGER: {
+          auto data = duckdb::FlatVector::GetData<uint32_t>(vector);
+          columns[col].push_back(static_cast<double>(data[row]));
+          break;
+        }
+        case duckdb::LogicalTypeId::UBIGINT: {
+          auto data = duckdb::FlatVector::GetData<uint64_t>(vector);
+          columns[col].push_back(static_cast<int64_t>(data[row]));
+          break;
+        }
+        case duckdb::LogicalTypeId::HUGEINT: {
+          auto data = duckdb::FlatVector::GetData<duckdb::hugeint_t>(vector);
+          columns[col].push_back(duckdb::Hugeint::ToString(data[row]));
+          break;
+        }
+        case duckdb::LogicalTypeId::UHUGEINT: {
+          auto val = chunk.GetValue(static_cast<duckdb::idx_t>(col), row);
+          columns[col].push_back(val.ToString());
+          break;
+        }
+        case duckdb::LogicalTypeId::FLOAT: {
+          auto data = duckdb::FlatVector::GetData<float>(vector);
+          columns[col].push_back(static_cast<double>(data[row]));
+          break;
+        }
+        case duckdb::LogicalTypeId::DOUBLE: {
+          auto data = duckdb::FlatVector::GetData<double>(vector);
+          columns[col].push_back(data[row]);
+          break;
+        }
+        case duckdb::LogicalTypeId::DECIMAL: {
+          auto width = duckdb::DecimalType::GetWidth(types[col]);
+          auto scale = duckdb::DecimalType::GetScale(types[col]);
+          switch (types[col].InternalType()) {
+            case duckdb::PhysicalType::INT16: {
+              auto data = duckdb::FlatVector::GetData<int16_t>(vector);
+              columns[col].push_back(duckdb::Decimal::ToString(data[row], width, scale));
+              break;
+            }
+            case duckdb::PhysicalType::INT32: {
+              auto data = duckdb::FlatVector::GetData<int32_t>(vector);
+              columns[col].push_back(duckdb::Decimal::ToString(data[row], width, scale));
+              break;
+            }
+            case duckdb::PhysicalType::INT64: {
+              auto data = duckdb::FlatVector::GetData<int64_t>(vector);
+              columns[col].push_back(duckdb::Decimal::ToString(data[row], width, scale));
+              break;
+            }
+            case duckdb::PhysicalType::INT128: {
+              auto data = duckdb::FlatVector::GetData<duckdb::hugeint_t>(vector);
+              columns[col].push_back(duckdb::Decimal::ToString(data[row], width, scale));
+              break;
+            }
+            default:
+              break;
+          }
+          break;
+        }
+        case duckdb::LogicalTypeId::VARCHAR: {
+          auto data = duckdb::FlatVector::GetData<duckdb::string_t>(vector);
+          columns[col].push_back(data[row].GetString());
+          break;
+        }
+        case duckdb::LogicalTypeId::BLOB: {
+          auto data = duckdb::FlatVector::GetData<duckdb::string_t>(vector);
+          auto& blobStr = data[row];
+          auto buf = ArrayBuffer::copy(
+            reinterpret_cast<const uint8_t*>(blobStr.GetData()),
+            blobStr.GetSize());
+          columns[col].push_back(buf);
+          break;
+        }
+
+        case duckdb::LogicalTypeId::DATE:
+        case duckdb::LogicalTypeId::TIME:
+        case duckdb::LogicalTypeId::TIME_TZ:
+        case duckdb::LogicalTypeId::INTERVAL: {
+          auto val = chunk.GetValue(static_cast<duckdb::idx_t>(col), row);
+          columns[col].push_back(val.ToString());
+          break;
+        }
+        case duckdb::LogicalTypeId::TIMESTAMP:
+        case duckdb::LogicalTypeId::TIMESTAMP_SEC:
+        case duckdb::LogicalTypeId::TIMESTAMP_MS:
+        case duckdb::LogicalTypeId::TIMESTAMP_NS:
+        case duckdb::LogicalTypeId::TIMESTAMP_TZ: {
+          auto val = chunk.GetValue(static_cast<duckdb::idx_t>(col), row);
+          auto str = val.ToString();
+          auto spacePos = str.find(' ');
+          if (spacePos != std::string::npos && spacePos >= 10) {
+            str[spacePos] = 'T';
+          }
+          columns[col].push_back(str);
+          break;
+        }
+
+        case duckdb::LogicalTypeId::UUID:
+        case duckdb::LogicalTypeId::ENUM:
+        case duckdb::LogicalTypeId::BIT: {
+          auto val = chunk.GetValue(static_cast<duckdb::idx_t>(col), row);
+          columns[col].push_back(val.ToString());
+          break;
+        }
+
+        case duckdb::LogicalTypeId::LIST:
+        case duckdb::LogicalTypeId::STRUCT:
+        case duckdb::LogicalTypeId::MAP:
+        case duckdb::LogicalTypeId::ARRAY:
+        case duckdb::LogicalTypeId::UNION: {
+          auto val = chunk.GetValue(static_cast<duckdb::idx_t>(col), row);
+          columns[col].push_back(valueToJson(val));
+          break;
+        }
+
+        default: {
+          auto val = chunk.GetValue(static_cast<duckdb::idx_t>(col), row);
+          columns[col].push_back(val.ToString());
+          break;
+        }
+      }
+    }
+  }
 }
 
 } // namespace margelo::nitro::rnduckdb

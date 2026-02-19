@@ -16,3 +16,4 @@ export type BatchResult = { rowsAffected: number }
 export type AttachOptions = { readOnly?: boolean; type?: string }
 export type CloseOptions = { force?: boolean }
 export type ConnectionInfo = { count: number; ids: string[] }
+export type StreamingOptions = { bufferSize?: number }

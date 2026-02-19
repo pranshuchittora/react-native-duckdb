@@ -1,5 +1,6 @@
 #include "HybridDatabase.hpp"
 #include "HybridPreparedStatement.hpp"
+#include "HybridStreamingResult.hpp"
 #include "utils.hpp"
 
 namespace margelo::nitro::rnduckdb {
@@ -148,6 +149,39 @@ void ConnectionTracker::closeAll() {
   for (auto* conn : toClose) {
     conn->close(std::nullopt);
   }
+}
+
+// --- Streaming ---
+
+std::shared_ptr<Promise<std::shared_ptr<HybridStreamingResultSpec>>> HybridDatabase::stream(
+    const std::string& sql,
+    const std::optional<std::vector<DuckDBValue>>& params) {
+  ensureOpen();
+  auto copiedParams = copyParamsForBackground(params);
+  return Promise<std::shared_ptr<HybridStreamingResultSpec>>::async(
+    [this, sql, copiedParams]() -> std::shared_ptr<HybridStreamingResultSpec> {
+      // Create a dedicated connection for streaming
+      auto streamCon = std::make_unique<duckdb::Connection>(*_db);
+
+      std::unique_ptr<duckdb::QueryResult> result;
+      if (copiedParams && !copiedParams->empty()) {
+        auto prepared = streamCon->Prepare(sql);
+        if (prepared->HasError()) {
+          throw std::runtime_error("[DuckDB] " + prepared->GetError());
+        }
+        auto values = toValues(*copiedParams);
+        result = prepared->Execute(values, true);
+      } else {
+        result = streamCon->SendQuery(sql);
+      }
+
+      if (result->HasError()) {
+        throw std::runtime_error("[DuckDB] " + result->GetError());
+      }
+
+      return std::make_shared<HybridStreamingResult>(
+        std::move(result), std::move(streamCon));
+    });
 }
 
 // --- ATTACH/DETACH ---
