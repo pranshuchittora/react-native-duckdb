@@ -5,6 +5,7 @@
 #include "HybridPreparedStatementSpec.hpp"
 #include "HybridStreamingResultSpec.hpp"
 #include "HybridAppenderSpec.hpp"
+#include "ExecuteOptions.hpp"
 #include "types.hpp"
 #include "duckdb_includes.hpp"
 #include <memory>
@@ -13,6 +14,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <atomic>
+#include <functional>
 #include <NitroModules/Promise.hpp>
 
 namespace margelo::nitro::rnduckdb {
@@ -95,7 +97,8 @@ public:
 
   std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> execute(
       const std::string& sql,
-      const std::optional<std::vector<DuckDBValue>>& params) override;
+      const std::optional<std::vector<DuckDBValue>>& params,
+      const std::optional<ExecuteOptions>& options) override;
 
   std::shared_ptr<HybridPreparedStatementSpec> prepare(
       const std::string& sql) override;
@@ -110,16 +113,26 @@ public:
 
   std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> executeNamed(
       const std::string& sql,
-      const std::unordered_map<std::string, DuckDBValue>& params) override;
+      const std::unordered_map<std::string, DuckDBValue>& params,
+      const std::optional<ExecuteOptions>& options) override;
 
   // Streaming
   std::shared_ptr<Promise<std::shared_ptr<HybridStreamingResultSpec>>> stream(
       const std::string& sql,
-      const std::optional<std::vector<DuckDBValue>>& params) override;
+      const std::optional<std::vector<DuckDBValue>>& params,
+      const std::optional<ExecuteOptions>& options) override;
 
   std::shared_ptr<Promise<std::shared_ptr<HybridStreamingResultSpec>>> streamNamed(
       const std::string& sql,
-      const std::unordered_map<std::string, DuckDBValue>& params) override;
+      const std::unordered_map<std::string, DuckDBValue>& params,
+      const std::optional<ExecuteOptions>& options) override;
+
+  // Profiling
+  std::string getProfilingInfo() override;
+
+  // Progress callbacks
+  void setProgressCallback(const std::function<void(double)>& callback) override;
+  void removeProgressCallback() override;
 
   // Appender
   std::shared_ptr<HybridAppenderSpec> createAppender(
@@ -145,6 +158,16 @@ private:
   void ensureOpen();
   void ensurePrimary(const char* method);
 
+  std::unique_ptr<duckdb::QueryResult> executeWithProgress(
+      const std::string& sql,
+      const std::optional<DuckDBParams>& params,
+      const std::optional<std::function<void(double)>>& onProgress);
+
+  std::unique_ptr<duckdb::QueryResult> executeNamedWithProgress(
+      const std::string& sql,
+      const DuckDBNamedParams& params,
+      const std::optional<std::function<void(double)>>& onProgress);
+
   std::shared_ptr<duckdb::DuckDB> _db;
   std::unique_ptr<duckdb::Connection> _con;
   bool _isOpen;
@@ -152,6 +175,7 @@ private:
   std::string _id;
   std::string _docPath;
   std::shared_ptr<ConnectionTracker> _tracker;
+  std::optional<std::function<void(double)>> _progressCallback;
 
   static std::atomic<uint64_t> _connectionIdCounter;
   static constexpr auto TAG = "Database";
