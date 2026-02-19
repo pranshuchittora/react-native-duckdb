@@ -14,6 +14,7 @@ Pods/
 duckdb/build-*/
 duckdb/.extensions-configured
 duckdb/extension/extension_config_local.cmake
+package/DuckDB.xcframework/
 
 # iOS
 example/ios/Podfile.lock

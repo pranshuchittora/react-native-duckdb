@@ -26,8 +26,10 @@ Pod::Spec.new do |s|
     "cpp/**/*.{h,hpp,c,cpp}",
   ]
 
-  # Vendor the pre-built DuckDB xcframework (duckdb submodule is at repo root)
-  s.vendored_frameworks = "../duckdb/build-ios/DuckDB.xcframework"
+  # Vendor the pre-built DuckDB xcframework.
+  # The build script copies it into package/ so it's within the pod source tree
+  # (CocoaPods ignores vendored_frameworks outside PODS_TARGET_SRCROOT).
+  s.vendored_frameworks = "DuckDB.xcframework"
 
   # DuckDB headers and our C++ headers must be private — the massive DuckDB C++
   # headers break Swift/C++ interop if exposed through the umbrella header.

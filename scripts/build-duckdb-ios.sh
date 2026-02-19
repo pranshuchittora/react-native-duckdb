@@ -90,4 +90,10 @@ xcodebuild -create-xcframework \
   -output "${BUILD_DIR}/DuckDB.xcframework" \
   2>&1 | tail -3
 
-echo "=== DuckDB.xcframework created at ${BUILD_DIR}/DuckDB.xcframework ==="
+# Step 4: Copy xcframework into package/ so CocoaPods can find it
+# vendored_frameworks paths must be within the pod source tree
+PACKAGE_DIR="${REPO_DIR}/package"
+rm -rf "${PACKAGE_DIR}/DuckDB.xcframework"
+cp -R "${BUILD_DIR}/DuckDB.xcframework" "${PACKAGE_DIR}/DuckDB.xcframework"
+
+echo "=== DuckDB.xcframework created at ${PACKAGE_DIR}/DuckDB.xcframework ==="
