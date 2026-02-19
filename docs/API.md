@@ -233,6 +233,83 @@ db.cancel() // interrupts the query
 // promise rejects with cancellation error
 ```
 
+#### `getProfilingInfo()`
+
+```ts
+getProfilingInfo(): string
+```
+
+Returns the profiling output for the most recent query on this connection as a raw JSON string. The JSON contains an operator tree with CPU time, rows scanned, and per-operator timings.
+
+- Works on both `db` (primary connection) and child connections from `db.connect()`
+- Returns data for the **most recent query only** — call between queries if you need each profile
+- Throws if profiling is not enabled — run `PRAGMA enable_profiling` first
+- The returned string is valid JSON — parse with `JSON.parse()` or pass directly to your logging/observability system
+
+```ts
+// Enable JSON profiling without console output (recommended)
+db.executeSync("PRAGMA enable_profiling = 'json'");
+db.executeSync("PRAGMA profiling_output = ''");
+
+// Run your query
+const result = await db.execute("SELECT * FROM large_table WHERE x > 100");
+
+// Get profiling info as raw JSON string
+const profilingJson = db.getProfilingInfo();
+// Parse if you want to inspect the operator tree
+const profile = JSON.parse(profilingJson);
+```
+
+**Recommended PRAGMAs:**
+- `PRAGMA enable_profiling = 'json'` — enable JSON profiling
+- `PRAGMA profiling_output = ''` — suppress automatic console output
+- `PRAGMA disable_profiling` — disable profiling when done
+
+#### `setProgressCallback(callback)`
+
+```ts
+setProgressCallback(callback: (percentage: number) => void): void
+```
+
+Sets a progress callback that fires for all async queries on this connection. The callback receives a percentage value between 0 and 100.
+
+- Fires only on async methods (`execute`, `executeNamed`, `stream`, `streamNamed`)
+- Sync methods (`executeSync`, `executeSyncNamed`) do not support progress because they block the JS thread
+- When both per-query and per-connection callbacks are set, the **per-query callback takes priority**
+
+```ts
+db.setProgressCallback((pct) => {
+  updateProgressBar(pct);
+});
+
+await db.execute("SELECT ...");  // fires progress
+await db.executeNamed("SELECT ...", { ... });  // also fires progress
+
+db.removeProgressCallback();
+```
+
+#### `removeProgressCallback()`
+
+```ts
+removeProgressCallback(): void
+```
+
+Removes the per-connection progress callback. Queries after this call will not report progress (unless a per-query `onProgress` is provided).
+
+#### Per-Query Progress
+
+Async execution methods accept an optional `ExecuteOptions` bag as their last parameter:
+
+```ts
+const result = await db.execute(
+  "SELECT count(*) FROM large_table t1 JOIN large_table t2 ON t1.id = t2.id",
+  undefined,
+  { onProgress: (pct) => console.log(`${Math.round(pct)}% complete`) }
+);
+```
+
+The `onProgress` callback receives a percentage (0-100) and fires during query execution. When provided, it overrides any per-connection callback set via `setProgressCallback()`.
+
 #### `executeSyncNamed(sql, params)`
 
 ```ts
@@ -796,6 +873,16 @@ type StreamingOptions = { bufferSize?: number }
 ```ts
 type AppenderOptions = { flushEvery?: number }
 ```
+
+### `ExecuteOptions`
+
+```ts
+interface ExecuteOptions {
+  onProgress?: (percentage: number) => void
+}
+```
+
+Passed as the optional third argument to `execute()`, `executeNamed()`, `stream()`, and `streamNamed()`. The `onProgress` callback receives a percentage (0-100) during query execution. When provided, it overrides any per-connection callback set via `setProgressCallback()`.
 
 ### `TransactionContext`
 
