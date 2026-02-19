@@ -10,6 +10,8 @@ import './tests/streaming.test'
 import './tests/appender.test'
 import './tests/filequery.test'
 import './tests/extensions.test'
+import './tests/cancel.test'
+import './tests/namedparams.test'
 import './tests/benchmark.test'
 import { TestSuiteScreen } from './screens/TestSuiteScreen'
 
