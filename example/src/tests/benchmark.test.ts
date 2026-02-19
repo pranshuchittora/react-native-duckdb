@@ -22,6 +22,44 @@ function populateTable(db: ReturnType<typeof HybridDuckDB.open>, table: string, 
   })
 }
 
+// Verify row content at specific positions — not just count
+function verifyContent(
+  db: ReturnType<typeof HybridDuckDB.open>,
+  table: string,
+  totalRows: number,
+  label: string
+) {
+  const count = Number(db.executeSync(`SELECT count(*) as cnt FROM ${table}`).toRows()[0].cnt)
+  if (count !== totalRows) throw new Error(`${label}: expected ${totalRows} rows, got ${count}`)
+
+  // Check first row
+  const first = db.executeSync(`SELECT * FROM ${table} WHERE id = 0`).toRows()
+  if (first.length !== 1) throw new Error(`${label}: first row missing`)
+  if (first[0].name !== 'row_0') throw new Error(`${label}: first row name=${first[0].name}, expected row_0`)
+  if (first[0].flag !== true) throw new Error(`${label}: first row flag=${first[0].flag}, expected true`)
+
+  // Check last row
+  const lastId = totalRows - 1
+  const last = db.executeSync(`SELECT * FROM ${table} WHERE id = ?`, [lastId]).toRows()
+  if (last.length !== 1) throw new Error(`${label}: last row missing (id=${lastId})`)
+  if (last[0].name !== `row_${lastId}`) throw new Error(`${label}: last row name=${last[0].name}, expected row_${lastId}`)
+
+  // Check middle row
+  const midId = Math.floor(totalRows / 2)
+  const mid = db.executeSync(`SELECT * FROM ${table} WHERE id = ?`, [midId]).toRows()
+  if (mid.length !== 1) throw new Error(`${label}: mid row missing (id=${midId})`)
+  if (mid[0].name !== `row_${midId}`) throw new Error(`${label}: mid row name=${mid[0].name}, expected row_${midId}`)
+  const expectedVal = midId * 1.1
+  if (Math.abs((mid[0].value as number) - expectedVal) > 0.01) {
+    throw new Error(`${label}: mid row value=${mid[0].value}, expected ~${expectedVal}`)
+  }
+
+  // Checksum: sum of all ids should be n*(n-1)/2
+  const expectedSum = (totalRows * (totalRows - 1)) / 2
+  const actualSum = Number(db.executeSync(`SELECT sum(id) as s FROM ${table}`).toRows()[0].s)
+  if (actualSum !== expectedSum) throw new Error(`${label}: id sum=${actualSum}, expected ${expectedSum}`)
+}
+
 TestRegistry.registerTest('Benchmarks', 'Row-by-row: appendRow vs INSERT — 10K rows', async () => {
   const db = HybridDuckDB.open(':memory:', {})
   try {
@@ -34,9 +72,7 @@ TestRegistry.registerTest('Benchmarks', 'Row-by-row: appendRow vs INSERT — 10K
       ])
     }
     const insSyncMs = Date.now() - insStart
-
-    const insCount = Number(db.executeSync('SELECT count(*) as cnt FROM bench_ins').toRows()[0].cnt)
-    if (insCount !== ROW_COUNT) throw new Error(`INSERT sync: expected ${ROW_COUNT}, got ${insCount}`)
+    verifyContent(db, 'bench_ins', ROW_COUNT, 'INSERT sync')
 
     // --- INSERT one-by-one (async) ---
     db.executeSync('DROP TABLE bench_ins')
@@ -48,9 +84,7 @@ TestRegistry.registerTest('Benchmarks', 'Row-by-row: appendRow vs INSERT — 10K
       ])
     }
     const insAsyncMs = Date.now() - insAsyncStart
-
-    const insAsyncCount = Number(db.executeSync('SELECT count(*) as cnt FROM bench_ins_async').toRows()[0].cnt)
-    if (insAsyncCount !== ROW_COUNT) throw new Error(`INSERT async: expected ${ROW_COUNT}, got ${insAsyncCount}`)
+    verifyContent(db, 'bench_ins_async', ROW_COUNT, 'INSERT async')
 
     // --- appendRow one-by-one ---
     db.executeSync('DROP TABLE bench_ins_async')
@@ -62,9 +96,7 @@ TestRegistry.registerTest('Benchmarks', 'Row-by-row: appendRow vs INSERT — 10K
       }
     })
     const appMs = Date.now() - appStart
-
-    const appCount = Number(db.executeSync('SELECT count(*) as cnt FROM bench_app').toRows()[0].cnt)
-    if (appCount !== ROW_COUNT) throw new Error(`Appender: expected ${ROW_COUNT}, got ${appCount}`)
+    verifyContent(db, 'bench_app', ROW_COUNT, 'appendRow')
 
     const syncSpeedup = insSyncMs / Math.max(appMs, 1)
     const asyncSpeedup = insAsyncMs / Math.max(appMs, 1)
@@ -74,6 +106,7 @@ TestRegistry.registerTest('Benchmarks', 'Row-by-row: appendRow vs INSERT — 10K
     console.debug(`  appendRow:      ${appMs}ms`)
     console.debug(`  vs sync:  ${syncSpeedup.toFixed(1)}x faster`)
     console.debug(`  vs async: ${asyncSpeedup.toFixed(1)}x faster`)
+    console.debug(`  Content: verified (first/mid/last rows + id checksum)`)
   } finally {
     db.close()
   }
@@ -97,9 +130,7 @@ TestRegistry.registerTest('Benchmarks', 'Batch: appendRows vs batch INSERT — 1
       db.executeBatchSync(commands)
     }
     const insSyncMs = Date.now() - insSyncStart
-
-    const insSyncCount = Number(db.executeSync('SELECT count(*) as cnt FROM bench_batch_ins').toRows()[0].cnt)
-    if (insSyncCount !== ROW_COUNT) throw new Error(`Batch INSERT sync: expected ${ROW_COUNT}, got ${insSyncCount}`)
+    verifyContent(db, 'bench_batch_ins', ROW_COUNT, 'Batch INSERT sync')
 
     // --- Batch INSERT using executeBatch (async) ---
     db.executeSync('DROP TABLE bench_batch_ins')
@@ -117,9 +148,7 @@ TestRegistry.registerTest('Benchmarks', 'Batch: appendRows vs batch INSERT — 1
       await db.executeBatch(commands)
     }
     const insAsyncMs = Date.now() - insAsyncStart
-
-    const insAsyncCount = Number(db.executeSync('SELECT count(*) as cnt FROM bench_batch_ins_async').toRows()[0].cnt)
-    if (insAsyncCount !== ROW_COUNT) throw new Error(`Batch INSERT async: expected ${ROW_COUNT}, got ${insAsyncCount}`)
+    verifyContent(db, 'bench_batch_ins_async', ROW_COUNT, 'Batch INSERT async')
 
     // --- Batch appendRows ---
     db.executeSync('DROP TABLE bench_batch_ins_async')
@@ -136,9 +165,7 @@ TestRegistry.registerTest('Benchmarks', 'Batch: appendRows vs batch INSERT — 1
       }
     })
     const appMs = Date.now() - appStart
-
-    const appCount = Number(db.executeSync('SELECT count(*) as cnt FROM bench_batch_app').toRows()[0].cnt)
-    if (appCount !== ROW_COUNT) throw new Error(`Batch Appender: expected ${ROW_COUNT}, got ${appCount}`)
+    verifyContent(db, 'bench_batch_app', ROW_COUNT, 'Batch appendRows')
 
     const syncSpeedup = insSyncMs / Math.max(appMs, 1)
     const asyncSpeedup = insAsyncMs / Math.max(appMs, 1)
@@ -148,6 +175,7 @@ TestRegistry.registerTest('Benchmarks', 'Batch: appendRows vs batch INSERT — 1
     console.debug(`  appendRows:        ${appMs}ms`)
     console.debug(`  vs sync:  ${syncSpeedup.toFixed(1)}x faster`)
     console.debug(`  vs async: ${asyncSpeedup.toFixed(1)}x faster`)
+    console.debug(`  Content: verified (first/mid/last rows + id checksum)`)
   } finally {
     db.close()
   }
@@ -156,38 +184,67 @@ TestRegistry.registerTest('Benchmarks', 'Batch: appendRows vs batch INSERT — 1
 TestRegistry.registerTest('Benchmarks', 'Streaming vs materialized — 200K rows', async () => {
   const db = HybridDuckDB.open(':memory:', {})
   try {
-    // Use 50K rows — at 10K both finish instantly, need scale to see the difference.
-    // Streaming advantage is bounded memory, not raw speed. At scale, materialized
+    // 200K rows — at small scale both finish instantly. At scale, materialized
     // must allocate all rows at once while streaming processes 2048-row chunks.
     db.executeSync('CREATE TABLE bench_stream (id INTEGER, name VARCHAR, value DOUBLE, flag BOOLEAN)')
     await populateTable(db, 'bench_stream', STREAM_ROW_COUNT)
 
     // --- Materialized: loads all rows into memory at once ---
     const matStart = Date.now()
-    const matResult = await db.execute('SELECT * FROM bench_stream')
+    const matResult = await db.execute('SELECT * FROM bench_stream ORDER BY id')
     const matRows = matResult.rowCount
-    // Force materialization by accessing data
-    const _matCols = matResult.columnNames
     const matMs = Date.now() - matStart
 
     if (matRows !== STREAM_ROW_COUNT) throw new Error(`Materialized: expected ${STREAM_ROW_COUNT}, got ${matRows}`)
 
+    // Verify materialized content via toRows spot check
+    const matData = matResult.toRows()
+    if (matData[0].id !== 0 || matData[0].name !== 'row_0') {
+      throw new Error(`Materialized: first row wrong — id=${matData[0].id}, name=${matData[0].name}`)
+    }
+    const matLastIdx = matData.length - 1
+    if (matData[matLastIdx].id !== STREAM_ROW_COUNT - 1) {
+      throw new Error(`Materialized: last row id=${matData[matLastIdx].id}, expected ${STREAM_ROW_COUNT - 1}`)
+    }
+
     // --- Streaming: processes 2048-row chunks, bounded memory ---
     const streamStart = Date.now()
-    const stream = await db.stream('SELECT * FROM bench_stream')
+    const stream = await db.stream('SELECT * FROM bench_stream ORDER BY id')
     let streamRows = 0
     let chunkCount = 0
+    let firstRow: Record<string, any> | null = null
+    let lastRow: Record<string, any> | null = null
+    let idSum = 0
     for await (const chunk of streamChunks(stream)) {
+      const rows = chunk.toRows()
       streamRows += chunk.rowCount
       chunkCount++
+      if (!firstRow && rows.length > 0) firstRow = rows[0]
+      if (rows.length > 0) lastRow = rows[rows.length - 1]
+      for (const row of rows) {
+        idSum += Number(row.id)
+      }
     }
     const streamMs = Date.now() - streamStart
 
     if (streamRows !== STREAM_ROW_COUNT) throw new Error(`Streaming: expected ${STREAM_ROW_COUNT}, got ${streamRows}`)
 
+    // Verify streaming content
+    if (!firstRow || firstRow.id !== 0 || firstRow.name !== 'row_0') {
+      throw new Error(`Streaming: first row wrong — ${JSON.stringify(firstRow)}`)
+    }
+    if (!lastRow || lastRow.id !== STREAM_ROW_COUNT - 1) {
+      throw new Error(`Streaming: last row id=${lastRow?.id}, expected ${STREAM_ROW_COUNT - 1}`)
+    }
+    const expectedSum = (STREAM_ROW_COUNT * (STREAM_ROW_COUNT - 1)) / 2
+    if (idSum !== expectedSum) {
+      throw new Error(`Streaming: id checksum=${idSum}, expected ${expectedSum}`)
+    }
+
     console.debug(`=== Streaming vs Materialized (${STREAM_ROW_COUNT} rows) ===`)
     console.debug(`  Materialized: ${matMs}ms (all ${matRows} rows in memory)`)
     console.debug(`  Streaming:    ${streamMs}ms (${chunkCount} chunks of ≤2048 rows)`)
+    console.debug(`  Content: verified (first/last rows + id checksum on both)`)
     console.debug(`  Note: Streaming wins on memory, not speed — bounded vs unbounded allocation`)
   } finally {
     db.close()
@@ -201,22 +258,30 @@ TestRegistry.registerTest('Benchmarks', 'Streaming 200K rows stress test', async
     await populateTable(db, 'bench_stress', STREAM_ROW_COUNT)
 
     const start = Date.now()
-    const stream = await db.stream('SELECT * FROM bench_stress')
+    const stream = await db.stream('SELECT * FROM bench_stress ORDER BY id')
     let totalRows = 0
     let chunkCount = 0
+    let idSum = 0
     for await (const chunk of streamChunks(stream)) {
+      const rows = chunk.toRows()
       totalRows += chunk.rowCount
       chunkCount++
+      for (const row of rows) {
+        idSum += Number(row.id)
+      }
     }
     const elapsed = Date.now() - start
+
+    if (totalRows !== STREAM_ROW_COUNT) throw new Error(`Expected ${STREAM_ROW_COUNT} rows, got ${totalRows}`)
+    const expectedSum = (STREAM_ROW_COUNT * (STREAM_ROW_COUNT - 1)) / 2
+    if (idSum !== expectedSum) throw new Error(`Checksum: id sum=${idSum}, expected ${expectedSum}`)
 
     console.debug(`=== Streaming Stress Test (${STREAM_ROW_COUNT} rows) ===`)
     console.debug(`  Total rows: ${totalRows}`)
     console.debug(`  Chunks:     ${chunkCount}`)
     console.debug(`  Time:       ${elapsed}ms`)
-    console.debug('  Result:     PASSED (no crash, no OOM)')
-
-    if (totalRows !== STREAM_ROW_COUNT) throw new Error(`Expected ${STREAM_ROW_COUNT} rows, got ${totalRows}`)
+    console.debug(`  Checksum:   ${idSum} (verified)`)
+    console.debug('  Result:     PASSED (no crash, no OOM, data correct)')
   } finally {
     db.close()
   }
