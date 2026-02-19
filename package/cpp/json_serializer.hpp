@@ -33,9 +33,17 @@ inline std::string valueToJson(const duckdb::Value& val) {
   if (val.IsNull()) return "null";
 
   switch (val.type().id()) {
-    case duckdb::LogicalTypeId::LIST:
-    case duckdb::LogicalTypeId::ARRAY: {
+    case duckdb::LogicalTypeId::LIST: {
       auto& children = duckdb::ListValue::GetChildren(val);
+      std::string result = "[";
+      for (duckdb::idx_t i = 0; i < children.size(); i++) {
+        if (i > 0) result += ",";
+        result += valueToJson(children[i]);
+      }
+      return result + "]";
+    }
+    case duckdb::LogicalTypeId::ARRAY: {
+      auto& children = duckdb::ArrayValue::GetChildren(val);
       std::string result = "[";
       for (duckdb::idx_t i = 0; i < children.size(); i++) {
         if (i > 0) result += ",";

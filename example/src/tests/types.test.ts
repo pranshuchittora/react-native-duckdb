@@ -69,7 +69,9 @@ TestRegistry.registerTest('Type System', 'Temporal round-trip — insert and sel
 TestRegistry.registerTest('Type System', 'Complex — LIST and ARRAY', async () => {
   const db = HybridDuckDB.open(':memory:', {})
   try {
-    const result = db.executeSync("SELECT [1, 2, 3] as list_val, [4, 5, 6]::INTEGER[3] as arr_val")
+    db.executeSync('CREATE TABLE list_test (list_val INTEGER[], arr_val INTEGER[3])')
+    db.executeSync("INSERT INTO list_test SELECT CAST('[1,2,3]' AS INTEGER[]), CAST('[4,5,6]' AS INTEGER[3])")
+    const result = db.executeSync('SELECT * FROM list_test')
     const rows = result.toRows()
     const { list_val, arr_val } = rows[0]
     console.debug(`complex list/array: list_val=${list_val}(${typeof list_val}), arr_val=${arr_val}(${typeof arr_val})`)
@@ -110,7 +112,9 @@ TestRegistry.registerTest('Type System', 'Complex — STRUCT', async () => {
 TestRegistry.registerTest('Type System', 'Complex — MAP', async () => {
   const db = HybridDuckDB.open(':memory:', {})
   try {
-    const result = db.executeSync("SELECT MAP {'key1': 'value1', 'key2': 'value2'} as map_val")
+    db.executeSync('CREATE TABLE map_test (map_val MAP(VARCHAR, VARCHAR))')
+    db.executeSync("INSERT INTO map_test VALUES ('{key1=value1, key2=value2}')")
+    const result = db.executeSync('SELECT * FROM map_test')
     const rows = result.toRows()
     const { map_val } = rows[0]
     console.debug(`map: map_val=${map_val}(${typeof map_val})`)
@@ -118,9 +122,13 @@ TestRegistry.registerTest('Type System', 'Complex — MAP', async () => {
     if (typeof map_val !== 'string') throw new Error(`Expected map_val to be string, got ${typeof map_val}`)
     const parsed = JSON.parse(map_val as string)
     if (!Array.isArray(parsed)) throw new Error(`Expected parsed MAP to be array, got ${typeof parsed}`)
-    const keys = parsed.map((e: any) => e.key)
-    if (!keys.includes('key1') || !keys.includes('key2'))
-      throw new Error(`Expected keys key1,key2, got ${JSON.stringify(keys)}`)
+    if (parsed.length !== 2) throw new Error(`Expected 2 entries, got ${parsed.length}`)
+    const entry1 = parsed.find((e: any) => e.key === 'key1')
+    const entry2 = parsed.find((e: any) => e.key === 'key2')
+    if (!entry1) throw new Error(`Missing key1 entry, got ${JSON.stringify(parsed)}`)
+    if (entry1.value !== 'value1') throw new Error(`Expected value1, got ${entry1.value}`)
+    if (!entry2) throw new Error(`Missing key2 entry, got ${JSON.stringify(parsed)}`)
+    if (entry2.value !== 'value2') throw new Error(`Expected value2, got ${entry2.value}`)
   } finally {
     db.close()
   }
@@ -129,9 +137,9 @@ TestRegistry.registerTest('Type System', 'Complex — MAP', async () => {
 TestRegistry.registerTest('Type System', 'Complex — nested LIST of STRUCT', async () => {
   const db = HybridDuckDB.open(':memory:', {})
   try {
-    const result = db.executeSync(
-      "SELECT [{'name': 'alice', 'score': 95}, {'name': 'bob', 'score': 87}] as nested"
-    )
+    db.executeSync('CREATE TABLE nested_test (nested STRUCT(name VARCHAR, score INTEGER)[])')
+    db.executeSync(`INSERT INTO nested_test VALUES ('[{"name": "alice", "score": 95}, {"name": "bob", "score": 87}]')`)
+    const result = db.executeSync('SELECT * FROM nested_test')
     const rows = result.toRows()
     const { nested } = rows[0]
     console.debug(`nested: ${nested}(${typeof nested})`)
@@ -152,7 +160,9 @@ TestRegistry.registerTest('Type System', 'Complex — nested LIST of STRUCT', as
 TestRegistry.registerTest('Type System', 'Complex — UNION', async () => {
   const db = HybridDuckDB.open(':memory:', {})
   try {
-    const result = db.executeSync("SELECT union_value(name := 'Frank') as u")
+    db.executeSync("CREATE TABLE union_test (u UNION(name VARCHAR, age INTEGER))")
+    db.executeSync("INSERT INTO union_test VALUES ('Frank')")
+    const result = db.executeSync('SELECT * FROM union_test')
     const rows = result.toRows()
     const { u } = rows[0]
     console.debug(`union: u=${u}(${typeof u})`)
@@ -169,7 +179,7 @@ TestRegistry.registerTest('Type System', 'Complex — UNION', async () => {
 TestRegistry.registerTest('Type System', 'Special — UUID', async () => {
   const db = HybridDuckDB.open(':memory:', {})
   try {
-    const result = db.executeSync('SELECT uuid() as id')
+    const result = db.executeSync("SELECT 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::UUID as id")
     const rows = result.toRows()
     const { id } = rows[0]
     console.debug(`uuid: id=${id}(${typeof id})`)
@@ -177,6 +187,8 @@ TestRegistry.registerTest('Type System', 'Special — UUID', async () => {
     if (typeof id !== 'string') throw new Error(`Expected id to be string, got ${typeof id}`)
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-/.test(id as string))
       throw new Error(`Expected UUID format, got ${id}`)
+    if (id !== 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')
+      throw new Error(`Expected exact UUID, got ${id}`)
   } finally {
     db.close()
   }
