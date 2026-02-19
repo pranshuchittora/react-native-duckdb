@@ -32,6 +32,8 @@ HybridQueryResult::HybridQueryResult(std::unique_ptr<duckdb::QueryResult> result
   }
 
   materialize(materialized);
+
+  _columnCache.resize(_columnNames.size());
 }
 
 void HybridQueryResult::materialize(duckdb::MaterializedQueryResult& result) {
@@ -258,13 +260,130 @@ std::vector<std::string> HybridQueryResult::getColumnTypes() {
   return _columnTypes;
 }
 
-std::vector<DuckDBValue> HybridQueryResult::getColumn(double index) {
+bool HybridQueryResult::isNumericType(const std::string& type) const {
+  return type == "TINYINT" || type == "SMALLINT" || type == "INTEGER" ||
+         type == "UTINYINT" || type == "USMALLINT" || type == "UINTEGER" ||
+         type == "FLOAT" || type == "DOUBLE";
+}
+
+bool HybridQueryResult::isBigIntType(const std::string& type) const {
+  return type == "BIGINT" || type == "UBIGINT";
+}
+
+bool HybridQueryResult::isBoolType(const std::string& type) const {
+  return type == "BOOLEAN";
+}
+
+ColumnData HybridQueryResult::getColumn(double index) {
   auto idx = static_cast<size_t>(index);
   if (idx >= _columns.size()) {
     throw std::runtime_error("[DuckDB] Column index " + std::to_string(idx) +
-                             " out of bounds (have " + std::to_string(_columns.size()) + " columns)");
+                              " out of bounds (have " + std::to_string(_columns.size()) + " columns)");
   }
-  return _columns[idx];
+
+  if (_columnCache[idx].has_value()) {
+    return _columnCache[idx].value();
+  }
+
+  auto& colType = _columnTypes[idx];
+  auto& colData = _columns[idx];
+
+  if (isNumericType(colType)) {
+    auto buf = ArrayBuffer::allocate(_rowCount * sizeof(double));
+    auto ptr = reinterpret_cast<double*>(buf->data());
+    auto validBuf = ArrayBuffer::allocate(_rowCount);
+    auto validPtr = validBuf->data();
+
+    for (size_t i = 0; i < _rowCount; i++) {
+      if (std::holds_alternative<NullType>(colData[i])) {
+        ptr[i] = 0.0;
+        validPtr[i] = 0;
+      } else {
+        ptr[i] = std::get<double>(colData[i]);
+        validPtr[i] = 1;
+      }
+    }
+
+    ColumnData result = NumericColumn(buf, validBuf, "float64");
+    _columnCache[idx] = result;
+    return result;
+
+  } else if (isBigIntType(colType)) {
+    auto buf = ArrayBuffer::allocate(_rowCount * sizeof(int64_t));
+    auto ptr = reinterpret_cast<int64_t*>(buf->data());
+    auto validBuf = ArrayBuffer::allocate(_rowCount);
+    auto validPtr = validBuf->data();
+
+    for (size_t i = 0; i < _rowCount; i++) {
+      if (std::holds_alternative<NullType>(colData[i])) {
+        ptr[i] = 0;
+        validPtr[i] = 0;
+      } else {
+        ptr[i] = std::get<int64_t>(colData[i]);
+        validPtr[i] = 1;
+      }
+    }
+
+    ColumnData result = NumericColumn(buf, validBuf, "bigint64");
+    _columnCache[idx] = result;
+    return result;
+
+  } else if (isBoolType(colType)) {
+    auto buf = ArrayBuffer::allocate(_rowCount);
+    auto ptr = buf->data();
+    auto validBuf = ArrayBuffer::allocate(_rowCount);
+    auto validPtr = validBuf->data();
+
+    for (size_t i = 0; i < _rowCount; i++) {
+      if (std::holds_alternative<NullType>(colData[i])) {
+        ptr[i] = 0;
+        validPtr[i] = 0;
+      } else {
+        ptr[i] = std::get<bool>(colData[i]) ? 1 : 0;
+        validPtr[i] = 1;
+      }
+    }
+
+    ColumnData result = NumericColumn(buf, validBuf, "uint8");
+    _columnCache[idx] = result;
+    return result;
+
+  } else {
+    // String/temporal/complex/special columns
+    std::vector<std::variant<NullType, std::string>> stringCol;
+    stringCol.reserve(_rowCount);
+
+    for (size_t i = 0; i < _rowCount; i++) {
+      auto& val = colData[i];
+      if (std::holds_alternative<NullType>(val)) {
+        stringCol.push_back(nitro::null);
+      } else if (std::holds_alternative<std::string>(val)) {
+        stringCol.push_back(std::get<std::string>(val));
+      } else {
+        // Fallback: convert to string for any other variant type
+        std::visit([&stringCol](auto&& arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if constexpr (std::is_same_v<T, NullType>) {
+            stringCol.push_back(nitro::null);
+          } else if constexpr (std::is_same_v<T, std::string>) {
+            stringCol.push_back(arg);
+          } else if constexpr (std::is_same_v<T, bool>) {
+            stringCol.push_back(std::string(arg ? "true" : "false"));
+          } else if constexpr (std::is_same_v<T, double>) {
+            stringCol.push_back(std::to_string(arg));
+          } else if constexpr (std::is_same_v<T, int64_t>) {
+            stringCol.push_back(std::to_string(arg));
+          } else {
+            stringCol.push_back(std::string(""));
+          }
+        }, val);
+      }
+    }
+
+    ColumnData result = std::move(stringCol);
+    _columnCache[idx] = result;
+    return result;
+  }
 }
 
 std::vector<std::unordered_map<std::string, DuckDBValue>> HybridQueryResult::toRows() {
@@ -284,8 +403,16 @@ std::vector<std::unordered_map<std::string, DuckDBValue>> HybridQueryResult::toR
 }
 
 size_t HybridQueryResult::getExternalMemorySize() noexcept {
-  // Rough estimate: each cell ~16 bytes (variant + data)
-  return _rowCount * _columnNames.size() * 16;
+  size_t base = _rowCount * _columnNames.size() * 16;
+  for (auto& cached : _columnCache) {
+    if (cached.has_value()) {
+      if (std::holds_alternative<NumericColumn>(cached.value())) {
+        auto& nc = std::get<NumericColumn>(cached.value());
+        base += nc.data->size() + nc.validity->size();
+      }
+    }
+  }
+  return base;
 }
 
 } // namespace margelo::nitro::rnduckdb

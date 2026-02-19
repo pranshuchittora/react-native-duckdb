@@ -130,10 +130,24 @@ TestRegistry.registerTest('Query Execution', 'Columnar access via getColumn()', 
     const result = db.executeSync('SELECT * FROM col_test ORDER BY x')
     const col0 = result.getColumn(0)
     const col1 = result.getColumn(1)
-    console.debug(`col0: ${JSON.stringify(col0)}, col1: ${JSON.stringify(col1)}`)
-    // INTEGER columns map to number (not bigint)
-    if (col0[0] !== 1 || col0[1] !== 2 || col0[2] !== 3) throw new Error(`Expected col0=[1,2,3], got ${JSON.stringify(col0)}`)
-    if (col1[0] !== 'a' || col1[1] !== 'b' || col1[2] !== 'c') throw new Error(`Expected col1=['a','b','c'], got ${JSON.stringify(col1)}`)
+
+    // INTEGER column returns NumericColumn with typed ArrayBuffer
+    if (!('data' in col0) || !('validity' in col0) || !('dtype' in col0))
+      throw new Error(`Expected NumericColumn for INTEGER, got ${JSON.stringify(col0)}`)
+    if (col0.dtype !== 'float64')
+      throw new Error(`Expected dtype='float64', got ${col0.dtype}`)
+    const data = new Float64Array(col0.data)
+    const validity = new Uint8Array(col0.validity)
+    if (data[0] !== 1 || data[1] !== 2 || data[2] !== 3)
+      throw new Error(`Expected data=[1,2,3], got [${data[0]},${data[1]},${data[2]}]`)
+    if (validity[0] !== 1 || validity[1] !== 1 || validity[2] !== 1)
+      throw new Error(`Expected all valid, got [${validity[0]},${validity[1]},${validity[2]}]`)
+
+    // VARCHAR column returns (string | null)[]
+    if (!Array.isArray(col1))
+      throw new Error(`Expected array for VARCHAR, got ${typeof col1}`)
+    if (col1[0] !== 'a' || col1[1] !== 'b' || col1[2] !== 'c')
+      throw new Error(`Expected col1=['a','b','c'], got ${JSON.stringify(col1)}`)
   } finally {
     db.close()
   }
