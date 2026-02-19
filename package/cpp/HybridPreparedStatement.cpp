@@ -40,6 +40,27 @@ std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> HybridPreparedS
     });
 }
 
+std::shared_ptr<HybridQueryResultSpec> HybridPreparedStatement::executeSyncNamed(
+    const std::unordered_map<std::string, DuckDBValue>& params) {
+  ensureNotFinalized();
+  auto namedValues = toNamedValues(params);
+  auto result = _stmt->Execute(namedValues);
+  if (result->HasError()) {
+    throw std::runtime_error("[DuckDB] " + result->GetError());
+  }
+  return std::make_shared<HybridQueryResult>(std::move(result));
+}
+
+std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> HybridPreparedStatement::executeNamed(
+    const std::unordered_map<std::string, DuckDBValue>& params) {
+  ensureNotFinalized();
+  auto copiedParams = copyNamedParamsForBackground(params);
+  return Promise<std::shared_ptr<HybridQueryResultSpec>>::async(
+    [this, copiedParams = std::move(copiedParams)]() -> std::shared_ptr<HybridQueryResultSpec> {
+      return this->executeSyncNamed(copiedParams);
+    });
+}
+
 void HybridPreparedStatement::finalize() {
   if (_finalized) return;
   _stmt.reset();

@@ -100,10 +100,26 @@ public:
   std::shared_ptr<HybridPreparedStatementSpec> prepare(
       const std::string& sql) override;
 
+  // Query cancellation
+  void cancel() override;
+
+  // Named parameter execution
+  std::shared_ptr<HybridQueryResultSpec> executeSyncNamed(
+      const std::string& sql,
+      const std::unordered_map<std::string, DuckDBValue>& params) override;
+
+  std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> executeNamed(
+      const std::string& sql,
+      const std::unordered_map<std::string, DuckDBValue>& params) override;
+
   // Streaming
   std::shared_ptr<Promise<std::shared_ptr<HybridStreamingResultSpec>>> stream(
       const std::string& sql,
       const std::optional<std::vector<DuckDBValue>>& params) override;
+
+  std::shared_ptr<Promise<std::shared_ptr<HybridStreamingResultSpec>>> streamNamed(
+      const std::string& sql,
+      const std::unordered_map<std::string, DuckDBValue>& params) override;
 
   // Appender
   std::shared_ptr<HybridAppenderSpec> createAppender(

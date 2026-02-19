@@ -15,3 +15,4 @@
 #include "duckdb/main/prepared_statement.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/common/types/value.hpp"
+#include "duckdb/planner/expression/bound_parameter_data.hpp"

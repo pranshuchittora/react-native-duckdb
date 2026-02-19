@@ -26,6 +26,12 @@ public:
   std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> execute(
       const std::optional<std::vector<DuckDBValue>>& params) override;
 
+  std::shared_ptr<HybridQueryResultSpec> executeSyncNamed(
+      const std::unordered_map<std::string, DuckDBValue>& params) override;
+
+  std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> executeNamed(
+      const std::unordered_map<std::string, DuckDBValue>& params) override;
+
   void finalize() override;
 
   size_t getExternalMemorySize() noexcept override;

@@ -105,6 +105,42 @@ std::shared_ptr<HybridPreparedStatementSpec> HybridDatabase::prepare(
   return std::make_shared<HybridPreparedStatement>(std::move(stmt), *_con);
 }
 
+// --- Query cancellation ---
+
+void HybridDatabase::cancel() {
+  ensureOpen();
+  _con->Interrupt();
+}
+
+// --- Named parameter execution ---
+
+std::shared_ptr<HybridQueryResultSpec> HybridDatabase::executeSyncNamed(
+    const std::string& sql,
+    const std::unordered_map<std::string, DuckDBValue>& params) {
+  ensureOpen();
+  auto prepared = _con->Prepare(sql);
+  if (prepared->HasError()) {
+    throw std::runtime_error("[DuckDB] " + prepared->GetError());
+  }
+  auto namedValues = toNamedValues(params);
+  auto result = prepared->Execute(namedValues);
+  if (result->HasError()) {
+    throw std::runtime_error("[DuckDB] " + result->GetError());
+  }
+  return std::make_shared<HybridQueryResult>(std::move(result));
+}
+
+std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> HybridDatabase::executeNamed(
+    const std::string& sql,
+    const std::unordered_map<std::string, DuckDBValue>& params) {
+  ensureOpen();
+  auto copiedParams = copyNamedParamsForBackground(params);
+  return Promise<std::shared_ptr<HybridQueryResultSpec>>::async(
+    [this, sql, copiedParams = std::move(copiedParams)]() -> std::shared_ptr<HybridQueryResultSpec> {
+      return this->executeSyncNamed(sql, copiedParams);
+    });
+}
+
 // --- Connection management ---
 
 std::shared_ptr<HybridDatabaseSpec> HybridDatabase::connect() {
@@ -175,6 +211,33 @@ std::shared_ptr<Promise<std::shared_ptr<HybridStreamingResultSpec>>> HybridDatab
       } else {
         result = streamCon->SendQuery(sql);
       }
+
+      if (result->HasError()) {
+        throw std::runtime_error("[DuckDB] " + result->GetError());
+      }
+
+      return std::make_shared<HybridStreamingResult>(
+        std::move(result), std::move(streamCon));
+    });
+}
+
+// --- Streaming (named params) ---
+
+std::shared_ptr<Promise<std::shared_ptr<HybridStreamingResultSpec>>> HybridDatabase::streamNamed(
+    const std::string& sql,
+    const std::unordered_map<std::string, DuckDBValue>& params) {
+  ensureOpen();
+  auto copiedParams = copyNamedParamsForBackground(params);
+  return Promise<std::shared_ptr<HybridStreamingResultSpec>>::async(
+    [this, sql, copiedParams = std::move(copiedParams)]() -> std::shared_ptr<HybridStreamingResultSpec> {
+      auto streamCon = std::make_unique<duckdb::Connection>(*_db);
+
+      auto prepared = streamCon->Prepare(sql);
+      if (prepared->HasError()) {
+        throw std::runtime_error("[DuckDB] " + prepared->GetError());
+      }
+      auto namedValues = toNamedValues(copiedParams);
+      auto result = prepared->Execute(namedValues, true);
 
       if (result->HasError()) {
         throw std::runtime_error("[DuckDB] " + result->GetError());
