@@ -74,45 +74,45 @@ TestRegistry.registerTest('Benchmarks', 'Row-by-row: appendRow vs INSERT — 10K
   try {
     // --- INSERT one-by-one (sync) ---
     db.executeSync('CREATE TABLE bench_ins (id INTEGER, name VARCHAR, value DOUBLE, flag BOOLEAN)')
-    const insStart = Date.now()
+    const insStart = performance.now()
     for (let i = 0; i < ROW_COUNT; i++) {
       db.executeSync('INSERT INTO bench_ins VALUES (?, ?, ?, ?)', [
         i, `row_${i}`, i * 1.1, i % 2 === 0,
       ])
     }
-    const insSyncMs = Date.now() - insStart
+    const insSyncMs = performance.now() - insStart
     verifyContent(db, 'bench_ins', ROW_COUNT, 'INSERT sync')
 
     // --- INSERT one-by-one (async) ---
     db.executeSync('DROP TABLE bench_ins')
     db.executeSync('CREATE TABLE bench_ins_async (id INTEGER, name VARCHAR, value DOUBLE, flag BOOLEAN)')
-    const insAsyncStart = Date.now()
+    const insAsyncStart = performance.now()
     for (let i = 0; i < ROW_COUNT; i++) {
       await db.execute('INSERT INTO bench_ins_async VALUES (?, ?, ?, ?)', [
         i, `row_${i}`, i * 1.1, i % 2 === 0,
       ])
     }
-    const insAsyncMs = Date.now() - insAsyncStart
+    const insAsyncMs = performance.now() - insAsyncStart
     verifyContent(db, 'bench_ins_async', ROW_COUNT, 'INSERT async')
 
     // --- appendRow one-by-one ---
     db.executeSync('DROP TABLE bench_ins_async')
     db.executeSync('CREATE TABLE bench_app (id INTEGER, name VARCHAR, value DOUBLE, flag BOOLEAN)')
-    const appStart = Date.now()
+    const appStart = performance.now()
     await withAppender(db, 'bench_app', (appender) => {
       for (let i = 0; i < ROW_COUNT; i++) {
         appender.appendRow([i, `row_${i}`, i * 1.1, i % 2 === 0])
       }
     })
-    const appMs = Date.now() - appStart
+    const appMs = performance.now() - appStart
     verifyContent(db, 'bench_app', ROW_COUNT, 'appendRow')
 
     const syncSpeedup = insSyncMs / Math.max(appMs, 1)
     const asyncSpeedup = insAsyncMs / Math.max(appMs, 1)
     console.debug(`=== Row-by-row (${ROW_COUNT} rows) ===`)
-    console.debug(`  INSERT sync:    ${insSyncMs}ms`)
-    console.debug(`  INSERT async:   ${insAsyncMs}ms`)
-    console.debug(`  appendRow:      ${appMs}ms`)
+    console.debug(`  INSERT sync:    ${insSyncMs.toFixed(2)}ms`)
+    console.debug(`  INSERT async:   ${insAsyncMs.toFixed(2)}ms`)
+    console.debug(`  appendRow:      ${appMs.toFixed(2)}ms`)
     console.debug(`  vs sync:  ${syncSpeedup.toFixed(1)}x faster`)
     console.debug(`  vs async: ${asyncSpeedup.toFixed(1)}x faster`)
     console.debug(`  Content: verified (first/mid/last rows + id checksum)`)
@@ -126,7 +126,7 @@ TestRegistry.registerTest('Benchmarks', 'Batch: appendRows vs batch INSERT — 1
   try {
     // --- Batch INSERT using executeBatchSync ---
     db.executeSync('CREATE TABLE bench_batch_ins (id INTEGER, name VARCHAR, value DOUBLE, flag BOOLEAN)')
-    const insSyncStart = Date.now()
+    const insSyncStart = performance.now()
     for (let offset = 0; offset < ROW_COUNT; offset += BATCH_SIZE) {
       const end = Math.min(offset + BATCH_SIZE, ROW_COUNT)
       const commands: { query: string; params: (number | string | boolean)[] }[] = []
@@ -138,13 +138,13 @@ TestRegistry.registerTest('Benchmarks', 'Batch: appendRows vs batch INSERT — 1
       }
       db.executeBatchSync(commands)
     }
-    const insSyncMs = Date.now() - insSyncStart
+    const insSyncMs = performance.now() - insSyncStart
     verifyContent(db, 'bench_batch_ins', ROW_COUNT, 'Batch INSERT sync')
 
     // --- Batch INSERT using executeBatch (async) ---
     db.executeSync('DROP TABLE bench_batch_ins')
     db.executeSync('CREATE TABLE bench_batch_ins_async (id INTEGER, name VARCHAR, value DOUBLE, flag BOOLEAN)')
-    const insAsyncStart = Date.now()
+    const insAsyncStart = performance.now()
     for (let offset = 0; offset < ROW_COUNT; offset += BATCH_SIZE) {
       const end = Math.min(offset + BATCH_SIZE, ROW_COUNT)
       const commands: { query: string; params: (number | string | boolean)[] }[] = []
@@ -156,13 +156,13 @@ TestRegistry.registerTest('Benchmarks', 'Batch: appendRows vs batch INSERT — 1
       }
       await db.executeBatch(commands)
     }
-    const insAsyncMs = Date.now() - insAsyncStart
+    const insAsyncMs = performance.now() - insAsyncStart
     verifyContent(db, 'bench_batch_ins_async', ROW_COUNT, 'Batch INSERT async')
 
     // --- Batch appendRows ---
     db.executeSync('DROP TABLE bench_batch_ins_async')
     db.executeSync('CREATE TABLE bench_batch_app (id INTEGER, name VARCHAR, value DOUBLE, flag BOOLEAN)')
-    const appStart = Date.now()
+    const appStart = performance.now()
     await withAppender(db, 'bench_batch_app', (appender) => {
       for (let offset = 0; offset < ROW_COUNT; offset += BATCH_SIZE) {
         const end = Math.min(offset + BATCH_SIZE, ROW_COUNT)
@@ -173,15 +173,15 @@ TestRegistry.registerTest('Benchmarks', 'Batch: appendRows vs batch INSERT — 1
         appender.appendRows(batch)
       }
     })
-    const appMs = Date.now() - appStart
+    const appMs = performance.now() - appStart
     verifyContent(db, 'bench_batch_app', ROW_COUNT, 'Batch appendRows')
 
     const syncSpeedup = insSyncMs / Math.max(appMs, 1)
     const asyncSpeedup = insAsyncMs / Math.max(appMs, 1)
     console.debug(`=== Batch (${ROW_COUNT} rows, ${BATCH_SIZE}/batch) ===`)
-    console.debug(`  executeBatchSync:  ${insSyncMs}ms`)
-    console.debug(`  executeBatch:      ${insAsyncMs}ms`)
-    console.debug(`  appendRows:        ${appMs}ms`)
+    console.debug(`  executeBatchSync:  ${insSyncMs.toFixed(2)}ms`)
+    console.debug(`  executeBatch:      ${insAsyncMs.toFixed(2)}ms`)
+    console.debug(`  appendRows:        ${appMs.toFixed(2)}ms`)
     console.debug(`  vs sync:  ${syncSpeedup.toFixed(1)}x faster`)
     console.debug(`  vs async: ${asyncSpeedup.toFixed(1)}x faster`)
     console.debug(`  Content: verified (first/mid/last rows + id checksum)`)
@@ -199,10 +199,10 @@ TestRegistry.registerTest('Benchmarks', 'Streaming vs materialized — 200K rows
     await populateTable(db, 'bench_stream', STREAM_ROW_COUNT)
 
     // --- Materialized: loads all rows into memory at once ---
-    const matStart = Date.now()
+    const matStart = performance.now()
     const matResult = await db.execute('SELECT * FROM bench_stream ORDER BY id')
     const matRows = matResult.rowCount
-    const matMs = Date.now() - matStart
+    const matMs = performance.now() - matStart
 
     if (matRows !== STREAM_ROW_COUNT) throw new Error(`Materialized: expected ${STREAM_ROW_COUNT}, got ${matRows}`)
 
@@ -217,7 +217,7 @@ TestRegistry.registerTest('Benchmarks', 'Streaming vs materialized — 200K rows
     }
 
     // --- Streaming: processes 2048-row chunks, bounded memory ---
-    const streamStart = Date.now()
+    const streamStart = performance.now()
     const stream = await db.stream('SELECT * FROM bench_stream ORDER BY id')
     let streamRows = 0
     let chunkCount = 0
@@ -237,7 +237,7 @@ TestRegistry.registerTest('Benchmarks', 'Streaming vs materialized — 200K rows
         if (rows.length > 0) lastRow = rows[rows.length - 1]
       }
     }
-    const streamMs = Date.now() - streamStart
+    const streamMs = performance.now() - streamStart
 
     if (streamRows !== STREAM_ROW_COUNT) throw new Error(`Streaming: expected ${STREAM_ROW_COUNT}, got ${streamRows}`)
 
@@ -250,8 +250,8 @@ TestRegistry.registerTest('Benchmarks', 'Streaming vs materialized — 200K rows
     }
 
     console.debug(`=== Streaming vs Materialized (${STREAM_ROW_COUNT} rows) ===`)
-    console.debug(`  Materialized: ${matMs}ms (all ${matRows} rows in memory)`)
-    console.debug(`  Streaming:    ${streamMs}ms (${chunkCount} chunks of ≤2048 rows)`)
+    console.debug(`  Materialized: ${matMs.toFixed(2)}ms (all ${matRows} rows in memory)`)
+    console.debug(`  Streaming:    ${streamMs.toFixed(2)}ms (${chunkCount} chunks of ≤2048 rows)`)
     console.debug(`  Content: verified (first/last rows on both)`)
     console.debug(`  Note: Streaming wins on memory, not speed — bounded vs unbounded allocation`)
   } finally {
@@ -265,7 +265,7 @@ TestRegistry.registerTest('Benchmarks', 'Streaming 200K rows stress test', async
     db.executeSync('CREATE TABLE bench_stress (id INTEGER, name VARCHAR, value DOUBLE, flag BOOLEAN)')
     await populateTable(db, 'bench_stress', STREAM_ROW_COUNT)
 
-    const start = Date.now()
+    const start = performance.now()
     const stream = await db.stream('SELECT * FROM bench_stress ORDER BY id')
     let totalRows = 0
     let chunkCount = 0
@@ -282,7 +282,7 @@ TestRegistry.registerTest('Benchmarks', 'Streaming 200K rows stress test', async
       const rows = chunk.toRows()
       if (rows.length > 0) lastRow = rows[rows.length - 1]
     }
-    const elapsed = Date.now() - start
+    const elapsed = performance.now() - start
 
     if (totalRows !== STREAM_ROW_COUNT) throw new Error(`Expected ${STREAM_ROW_COUNT} rows, got ${totalRows}`)
     if (!firstRow || firstRow.id !== 0) throw new Error(`First row id=${firstRow?.id}, expected 0`)
@@ -291,7 +291,7 @@ TestRegistry.registerTest('Benchmarks', 'Streaming 200K rows stress test', async
     console.debug(`=== Streaming Stress Test (${STREAM_ROW_COUNT} rows) ===`)
     console.debug(`  Total rows: ${totalRows}`)
     console.debug(`  Chunks:     ${chunkCount}`)
-    console.debug(`  Time:       ${elapsed}ms`)
+    console.debug(`  Time:       ${elapsed.toFixed(2)}ms`)
     console.debug(`  First: id=${firstRow.id}, name=${firstRow.name}`)
     console.debug(`  Last:  id=${lastRow.id}, name=${lastRow.name}`)
     console.debug('  Result:     PASSED (no crash, no OOM, data correct)')
