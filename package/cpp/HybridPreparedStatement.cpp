@@ -44,7 +44,7 @@ std::shared_ptr<HybridQueryResultSpec> HybridPreparedStatement::executeSyncNamed
     const std::unordered_map<std::string, DuckDBValue>& params) {
   ensureNotFinalized();
   auto namedValues = toNamedValues(params);
-  auto result = _stmt->Execute(namedValues);
+  auto result = _stmt->Execute(namedValues, false);
   if (result->HasError()) {
     throw std::runtime_error("[DuckDB] " + result->GetError());
   }

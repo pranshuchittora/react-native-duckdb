@@ -123,7 +123,7 @@ std::shared_ptr<HybridQueryResultSpec> HybridDatabase::executeSyncNamed(
     throw std::runtime_error("[DuckDB] " + prepared->GetError());
   }
   auto namedValues = toNamedValues(params);
-  auto result = prepared->Execute(namedValues);
+  auto result = prepared->Execute(namedValues, false);
   if (result->HasError()) {
     throw std::runtime_error("[DuckDB] " + result->GetError());
   }
