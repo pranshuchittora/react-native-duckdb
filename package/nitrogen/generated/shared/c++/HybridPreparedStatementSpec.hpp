@@ -25,6 +25,7 @@ namespace margelo::nitro::rnduckdb { class HybridQueryResultSpec; }
 #include <vector>
 #include <optional>
 #include <NitroModules/Promise.hpp>
+#include <unordered_map>
 
 namespace margelo::nitro::rnduckdb {
 
@@ -59,6 +60,8 @@ namespace margelo::nitro::rnduckdb {
       // Methods
       virtual std::shared_ptr<HybridQueryResultSpec> executeSync(const std::optional<std::vector<std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
       virtual std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> execute(const std::optional<std::vector<std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
+      virtual std::shared_ptr<HybridQueryResultSpec> executeSyncNamed(const std::unordered_map<std::string, std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>& params) = 0;
+      virtual std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> executeNamed(const std::unordered_map<std::string, std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>& params) = 0;
       virtual void finalize() = 0;
 
     protected:

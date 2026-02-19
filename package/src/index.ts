@@ -8,6 +8,7 @@ export type { Appender } from './specs/Appender.nitro'
 export type {
   DuckDBConfig,
   DuckDBValue,
+  DuckDBNamedParams,
   NumericColumn,
   ColumnData,
   BatchCommand,

@@ -47,6 +47,7 @@ namespace margelo::nitro::rnduckdb { struct BatchCommand; }
 #include <vector>
 #include <NitroModules/Promise.hpp>
 #include "HybridPreparedStatementSpec.hpp"
+#include <unordered_map>
 #include "HybridStreamingResultSpec.hpp"
 #include "HybridAppenderSpec.hpp"
 #include "AppenderOptions.hpp"
@@ -91,7 +92,11 @@ namespace margelo::nitro::rnduckdb {
       virtual std::shared_ptr<HybridQueryResultSpec> executeSync(const std::string& sql, const std::optional<std::vector<std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
       virtual std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> execute(const std::string& sql, const std::optional<std::vector<std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
       virtual std::shared_ptr<HybridPreparedStatementSpec> prepare(const std::string& sql) = 0;
+      virtual void cancel() = 0;
+      virtual std::shared_ptr<HybridQueryResultSpec> executeSyncNamed(const std::string& sql, const std::unordered_map<std::string, std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>& params) = 0;
+      virtual std::shared_ptr<Promise<std::shared_ptr<HybridQueryResultSpec>>> executeNamed(const std::string& sql, const std::unordered_map<std::string, std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>& params) = 0;
       virtual std::shared_ptr<Promise<std::shared_ptr<HybridStreamingResultSpec>>> stream(const std::string& sql, const std::optional<std::vector<std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>>& params) = 0;
+      virtual std::shared_ptr<Promise<std::shared_ptr<HybridStreamingResultSpec>>> streamNamed(const std::string& sql, const std::unordered_map<std::string, std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>& params) = 0;
       virtual std::shared_ptr<HybridAppenderSpec> createAppender(const std::string& table, const std::optional<AppenderOptions>& options) = 0;
       virtual std::shared_ptr<HybridDatabaseSpec> connect() = 0;
       virtual ConnectionInfo connections() = 0;

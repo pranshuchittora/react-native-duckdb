@@ -20,8 +20,16 @@ export interface Database extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   execute(sql: string, params?: DuckDBValue[]): Promise<QueryResult>
   prepare(sql: string): PreparedStatement
 
+  // Query cancellation
+  cancel(): void
+
+  // Named parameter execution
+  executeSyncNamed(sql: string, params: Record<string, DuckDBValue>): QueryResult
+  executeNamed(sql: string, params: Record<string, DuckDBValue>): Promise<QueryResult>
+
   // Streaming
   stream(sql: string, params?: DuckDBValue[]): Promise<StreamingResult>
+  streamNamed(sql: string, params: Record<string, DuckDBValue>): Promise<StreamingResult>
 
   // Appender
   createAppender(table: string, options?: AppenderOptions): Appender

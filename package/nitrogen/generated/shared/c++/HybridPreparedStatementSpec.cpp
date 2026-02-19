@@ -16,6 +16,8 @@ namespace margelo::nitro::rnduckdb {
     registerHybrids(this, [](Prototype& prototype) {
       prototype.registerHybridMethod("executeSync", &HybridPreparedStatementSpec::executeSync);
       prototype.registerHybridMethod("execute", &HybridPreparedStatementSpec::execute);
+      prototype.registerHybridMethod("executeSyncNamed", &HybridPreparedStatementSpec::executeSyncNamed);
+      prototype.registerHybridMethod("executeNamed", &HybridPreparedStatementSpec::executeNamed);
       prototype.registerHybridMethod("finalize", &HybridPreparedStatementSpec::finalize);
     });
   }

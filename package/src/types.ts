@@ -3,6 +3,7 @@ import type { Int64 } from 'react-native-nitro-modules'
 export type DuckDBConfig = Record<string, string>
 // Nitro variant — maps to std::variant<std::monostate, bool, double, int64_t, std::string, std::shared_ptr<ArrayBuffer>>
 export type DuckDBValue = null | boolean | number | Int64 | string | ArrayBuffer
+export type DuckDBNamedParams = Record<string, DuckDBValue>
 
 export interface NumericColumn {
   data: ArrayBuffer

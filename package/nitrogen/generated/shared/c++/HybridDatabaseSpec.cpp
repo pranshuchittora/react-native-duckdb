@@ -19,7 +19,11 @@ namespace margelo::nitro::rnduckdb {
       prototype.registerHybridMethod("executeSync", &HybridDatabaseSpec::executeSync);
       prototype.registerHybridMethod("execute", &HybridDatabaseSpec::execute);
       prototype.registerHybridMethod("prepare", &HybridDatabaseSpec::prepare);
+      prototype.registerHybridMethod("cancel", &HybridDatabaseSpec::cancel);
+      prototype.registerHybridMethod("executeSyncNamed", &HybridDatabaseSpec::executeSyncNamed);
+      prototype.registerHybridMethod("executeNamed", &HybridDatabaseSpec::executeNamed);
       prototype.registerHybridMethod("stream", &HybridDatabaseSpec::stream);
+      prototype.registerHybridMethod("streamNamed", &HybridDatabaseSpec::streamNamed);
       prototype.registerHybridMethod("createAppender", &HybridDatabaseSpec::createAppender);
       prototype.registerHybridMethod("connect", &HybridDatabaseSpec::connect);
       prototype.registerHybridMethod("connections", &HybridDatabaseSpec::connections);
