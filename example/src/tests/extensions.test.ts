@@ -52,8 +52,11 @@ TestRegistry.registerTest('Extensions', 'SQLite scanner: ATTACH and query SQLite
     const dbDir = dbPath.substring(0, dbPath.lastIndexOf('/'))
     const sqlitePath = `${dbDir}/test_scanner.sqlite`
 
-    // Create a SQLite database via the sqlite_scanner extension
+    // Create a SQLite database via the sqlite_scanner extension.
+    // Drop first in case a leftover .sqlite file exists from a prior run
+    // (deleteDatabase only removes .db files, not the .sqlite artifact).
     db.executeSync(`ATTACH '${sqlitePath}' AS sqlitedb (TYPE SQLITE)`)
+    db.executeSync('DROP TABLE IF EXISTS sqlitedb.users')
     db.executeSync('CREATE TABLE sqlitedb.users (id INTEGER, name VARCHAR)')
     db.executeSync("INSERT INTO sqlitedb.users VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie')")
     db.executeSync('DETACH sqlitedb')
