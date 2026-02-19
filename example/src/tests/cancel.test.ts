@@ -4,7 +4,10 @@ import { HybridDuckDB } from 'react-native-duckdb'
 TestRegistry.registerTest('Query Cancellation', 'Cancel running async query', async () => {
   const db = HybridDuckDB.open(':memory:', {})
   try {
-    const promise = db.execute('SELECT count(*) FROM generate_series(1, 5000000) t1, generate_series(1, 50) t2')
+    // Use a very heavy cross join that cannot complete quickly
+    const promise = db.execute('SELECT count(*) FROM generate_series(1, 10000000) t1, generate_series(1, 100) t2')
+    // Small delay to ensure query has started on native thread
+    await new Promise(resolve => setTimeout(resolve, 10))
     db.cancel()
     let threw = false
     try {
@@ -38,7 +41,8 @@ TestRegistry.registerTest('Query Cancellation', 'Cancel when idle — no-op', as
 TestRegistry.registerTest('Query Cancellation', 'Connection reusable after cancel', async () => {
   const db = HybridDuckDB.open(':memory:', {})
   try {
-    const promise = db.execute('SELECT count(*) FROM generate_series(1, 5000000) t1, generate_series(1, 50) t2')
+    const promise = db.execute('SELECT count(*) FROM generate_series(1, 10000000) t1, generate_series(1, 100) t2')
+    await new Promise(resolve => setTimeout(resolve, 10))
     db.cancel()
     try {
       await promise
