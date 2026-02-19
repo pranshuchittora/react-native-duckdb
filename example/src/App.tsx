@@ -8,6 +8,7 @@ import './tests/types.test'
 import './tests/columnar.test'
 import './tests/streaming.test'
 import './tests/appender.test'
+import './tests/filequery.test'
 import './tests/benchmark.test'
 import { TestSuiteScreen } from './screens/TestSuiteScreen'
 

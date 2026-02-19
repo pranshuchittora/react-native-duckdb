@@ -16,6 +16,11 @@
     "react-native-nitro-modules": "0.33.9",
     "react-native-duckdb": "workspace:*"
   },
+  "react-native-duckdb": {
+    "build": {
+      "extensions": ["core_functions", "parquet", "json", "icu", "sqlite_scanner"]
+    }
+  },
   "devDependencies": {
     "@babel/core": "^7.28.5",
     "@babel/runtime": "^7.25.4",
