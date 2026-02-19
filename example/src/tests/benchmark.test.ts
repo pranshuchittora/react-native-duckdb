@@ -60,6 +60,13 @@ function verifyContent(
   const hi = Number(minMax.hi)
   if (lo !== 0) throw new Error(`${label}: min id=${lo}, expected 0`)
   if (hi !== totalRows - 1) throw new Error(`${label}: max id=${hi}, expected ${totalRows - 1}`)
+
+  // Sum check (available via core_functions extension)
+  const sumResult = db.executeSync(`SELECT sum(id) as total FROM ${table}`).toRows()[0]
+  const expectedSum = (totalRows - 1) * totalRows / 2 // sum of 0..n-1
+  if (Number(sumResult.total) !== expectedSum) {
+    throw new Error(`${label}: sum(id)=${sumResult.total}, expected ${expectedSum}`)
+  }
 }
 
 TestRegistry.registerTest('Benchmarks', 'Row-by-row: appendRow vs INSERT — 10K rows', async () => {
