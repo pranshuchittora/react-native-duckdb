@@ -4,28 +4,50 @@ project(RNDuckDB)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_CXX_STANDARD 20)
 
+# Path to DuckDB source (submodule at react-native-duckdb/duckdb/)
+set(DUCKDB_SOURCE_DIR "${CMAKE_SOURCE_DIR}/../../duckdb")
+
+# Run extension configuration script to generate extension_config_local.cmake.
+# The script walks up from WORKING_DIRECTORY to find the consumer's package.json.
+find_program(NODE_EXECUTABLE node REQUIRED)
+execute_process(
+  COMMAND ${NODE_EXECUTABLE} ${CMAKE_SOURCE_DIR}/../scripts/configure-extensions.js
+    --duckdb-path ${DUCKDB_SOURCE_DIR}
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../..
+  RESULT_VARIABLE CONFIGURE_RESULT
+)
+if(NOT CONFIGURE_RESULT EQUAL 0)
+  message(FATAL_ERROR "react-native-duckdb: Extension configuration failed (exit ${CONFIGURE_RESULT})")
+endif()
+
+# DuckDB build options — disable everything we don't need on mobile
+set(BUILD_SHELL OFF CACHE BOOL "" FORCE)
+set(BUILD_UNITTESTS OFF CACHE BOOL "" FORCE)
+set(BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+set(ENABLE_SANITIZER OFF CACHE BOOL "" FORCE)
+set(ENABLE_UBSAN OFF CACHE BOOL "" FORCE)
+set(BUILD_HTTPFS_EXTENSION OFF CACHE BOOL "" FORCE)
+set(EXTENSION_STATIC_BUILD OFF CACHE BOOL "" FORCE)
+set(BUILD_EXTENSIONS_ONLY OFF CACHE BOOL "" FORCE)
+set(DUCKDB_EXPLICIT_PLATFORM "android_${ANDROID_ABI}" CACHE STRING "" FORCE)
+
+# Build DuckDB from source
+add_subdirectory(${DUCKDB_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/duckdb EXCLUDE_FROM_ALL)
+
+# Our library source files
 file(GLOB_RECURSE cpp_files RELATIVE ${CMAKE_SOURCE_DIR}
   "../cpp/**.cpp"
   "cpp-adapter.cpp"
 )
 
-# DuckDB amalgamation — compiled separately for build flag control
-set(DUCKDB_SOURCES "${CMAKE_SOURCE_DIR}/../vendor/duckdb/duckdb.cpp")
-
-add_library(${CMAKE_PROJECT_NAME} SHARED ${cpp_files} ${DUCKDB_SOURCES})
+add_library(${CMAKE_PROJECT_NAME} SHARED ${cpp_files})
 
 include(${CMAKE_SOURCE_DIR}/../nitrogen/generated/android/RNDuckDB+autolinking.cmake)
 
-include_directories(
-  ../cpp
-  ../vendor/duckdb
-)
-
-# DuckDB compile definitions
-target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-  DUCKDB_NO_THREADS=0
-  DUCKDB_EXTENSION_AUTOLOAD=0
-  DUCKDB_EXTENSION_AUTOINSTALL=0
+# Include paths: DuckDB source headers + our C++ code
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+  ${DUCKDB_SOURCE_DIR}/src/include
+  ${CMAKE_SOURCE_DIR}/../cpp
 )
 
 set_target_properties(
@@ -39,13 +61,16 @@ find_package(ReactAndroid REQUIRED CONFIG)
 find_package(fbjni REQUIRED CONFIG)
 find_library(LOG_LIB log)
 
+# Link DuckDB static library + extension libraries (same pattern as DuckDB shell)
 target_link_libraries(
   ${CMAKE_PROJECT_NAME}
+  duckdb_static
   ${LOG_LIB}
   android
   fbjni::fbjni
   ReactAndroid::jsi
 )
+link_extension_libraries(${CMAKE_PROJECT_NAME} PRIVATE)
 
 if (REACTNATIVE_MERGED_SO OR ReactAndroid_VERSION_MINOR GREATER_EQUAL 76)
   target_link_libraries(
@@ -67,9 +92,4 @@ target_compile_options(
   -frtti
   -O2
   -DONANDROID
-)
-
-# Optimize DuckDB amalgamation specifically (massive file)
-set_source_files_properties(${DUCKDB_SOURCES} PROPERTIES
-  COMPILE_FLAGS "-O2 -Wno-unused-variable -Wno-unused-function -Wno-sign-compare"
 )

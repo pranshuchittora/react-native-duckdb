@@ -27,6 +27,7 @@
     "ios",
     "cpp",
     "vendor",
+    "scripts",
     "RNDuckDB.podspec",
     "!lib/typescript/example",
     "!android/build",
