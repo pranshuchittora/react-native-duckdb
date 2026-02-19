@@ -19,3 +19,6 @@ export type CloseOptions = { force?: boolean }
 export type ConnectionInfo = { count: number; ids: string[] }
 export type StreamingOptions = { bufferSize?: number }
 export type AppenderOptions = { flushEvery?: number }
+export interface ExecuteOptions {
+  onProgress?: (percentage: number) => void
+}

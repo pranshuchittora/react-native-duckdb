@@ -25,6 +25,9 @@ namespace margelo::nitro::rnduckdb {
       prototype.registerHybridMethod("stream", &HybridDatabaseSpec::stream);
       prototype.registerHybridMethod("streamNamed", &HybridDatabaseSpec::streamNamed);
       prototype.registerHybridMethod("createAppender", &HybridDatabaseSpec::createAppender);
+      prototype.registerHybridMethod("getProfilingInfo", &HybridDatabaseSpec::getProfilingInfo);
+      prototype.registerHybridMethod("setProgressCallback", &HybridDatabaseSpec::setProgressCallback);
+      prototype.registerHybridMethod("removeProgressCallback", &HybridDatabaseSpec::removeProgressCallback);
       prototype.registerHybridMethod("connect", &HybridDatabaseSpec::connect);
       prototype.registerHybridMethod("connections", &HybridDatabaseSpec::connections);
       prototype.registerHybridMethod("closeConnections", &HybridDatabaseSpec::closeConnections);

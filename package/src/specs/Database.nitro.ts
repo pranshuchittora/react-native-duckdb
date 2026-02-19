@@ -7,6 +7,7 @@ import type {
   CloseOptions,
   ConnectionInfo,
   AppenderOptions,
+  ExecuteOptions,
 } from '../types'
 import type { QueryResult } from './QueryResult.nitro'
 import type { PreparedStatement } from './PreparedStatement.nitro'
@@ -17,7 +18,7 @@ export interface Database extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   readonly isOpen: boolean
   close(options?: CloseOptions): void
   executeSync(sql: string, params?: DuckDBValue[]): QueryResult
-  execute(sql: string, params?: DuckDBValue[]): Promise<QueryResult>
+  execute(sql: string, params?: DuckDBValue[], options?: ExecuteOptions): Promise<QueryResult>
   prepare(sql: string): PreparedStatement
 
   // Query cancellation
@@ -25,14 +26,21 @@ export interface Database extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
 
   // Named parameter execution
   executeSyncNamed(sql: string, params: Record<string, DuckDBValue>): QueryResult
-  executeNamed(sql: string, params: Record<string, DuckDBValue>): Promise<QueryResult>
+  executeNamed(sql: string, params: Record<string, DuckDBValue>, options?: ExecuteOptions): Promise<QueryResult>
 
   // Streaming
-  stream(sql: string, params?: DuckDBValue[]): Promise<StreamingResult>
-  streamNamed(sql: string, params: Record<string, DuckDBValue>): Promise<StreamingResult>
+  stream(sql: string, params?: DuckDBValue[], options?: ExecuteOptions): Promise<StreamingResult>
+  streamNamed(sql: string, params: Record<string, DuckDBValue>, options?: ExecuteOptions): Promise<StreamingResult>
 
   // Appender
   createAppender(table: string, options?: AppenderOptions): Appender
+
+  // Profiling
+  getProfilingInfo(): string
+
+  // Progress callbacks
+  setProgressCallback(callback: (percentage: number) => void): void
+  removeProgressCallback(): void
 
   // Connection management
   connect(): Database

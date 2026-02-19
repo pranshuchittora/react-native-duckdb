@@ -18,6 +18,7 @@ export type {
   ConnectionInfo,
   StreamingOptions,
   AppenderOptions,
+  ExecuteOptions,
 } from './types'
 export { DuckDBError } from './DuckDBError'
 export { createWrappedDatabase, executeTransaction } from './transaction'
