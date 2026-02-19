@@ -67,7 +67,8 @@ android {
       cmake {
         arguments "-DANDROID_STL=c++_shared",
           "-DANDROID_TOOLCHAIN=clang",
-          "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
+          "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
+          "-DAPP_ROOT_DIR=${rootProject.projectDir.parentFile.absolutePath}"
         abiFilters (*reactNativeArchitectures())
       }
     }

@@ -9,11 +9,12 @@ set(DUCKDB_SOURCE_DIR "${CMAKE_SOURCE_DIR}/../../duckdb")
 
 # Run extension configuration script to generate extension_config_local.cmake.
 # The script walks up from WORKING_DIRECTORY to find the consumer's package.json.
+# APP_ROOT_DIR is passed from build.gradle (rootProject.projectDir.parentFile).
 find_program(NODE_EXECUTABLE node REQUIRED)
 execute_process(
-  COMMAND ${NODE_EXECUTABLE} ${CMAKE_SOURCE_DIR}/../scripts/configure-extensions.js
+  COMMAND ${NODE_EXECUTABLE} ${CMAKE_SOURCE_DIR}/../../scripts/configure-extensions.js
     --duckdb-path ${DUCKDB_SOURCE_DIR}
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../../..
+    --app-root ${APP_ROOT_DIR}
   RESULT_VARIABLE CONFIGURE_RESULT
 )
 if(NOT CONFIGURE_RESULT EQUAL 0)

@@ -3,7 +3,7 @@
 #include "HybridStreamingResultSpec.hpp"
 #include "HybridQueryResult.hpp"
 #include "types.hpp"
-#include "duckdb.hpp"
+#include "duckdb_includes.hpp"
 #include <memory>
 #include <vector>
 #include <string>

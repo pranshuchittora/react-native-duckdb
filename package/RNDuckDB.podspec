@@ -14,8 +14,9 @@ Pod::Spec.new do |s|
 
   # Build DuckDB from source at pod-install time.
   # Creates DuckDB.xcframework with all configured extensions statically linked.
+  # Scripts and duckdb submodule live at the repo root (one level above package/).
   s.prepare_command = <<-CMD
-    bash scripts/build-duckdb-ios.sh #{min_ios_version_supported}
+    bash ../scripts/build-duckdb-ios.sh #{min_ios_version_supported}
   CMD
 
   s.source_files = [
@@ -25,8 +26,8 @@ Pod::Spec.new do |s|
     "cpp/**/*.{h,hpp,c,cpp}",
   ]
 
-  # Vendor the pre-built DuckDB xcframework
-  s.vendored_frameworks = "duckdb/build-ios/DuckDB.xcframework"
+  # Vendor the pre-built DuckDB xcframework (duckdb submodule is at repo root)
+  s.vendored_frameworks = "../duckdb/build-ios/DuckDB.xcframework"
 
   # DuckDB headers and our C++ headers must be private — the massive DuckDB C++
   # headers break Swift/C++ interop if exposed through the umbrella header.
@@ -38,7 +39,7 @@ Pod::Spec.new do |s|
     'CLANG_CXX_LANGUAGE_STANDARD' => 'c++20',
     'CLANG_CXX_LIBRARY' => 'libc++',
     :WARNING_CFLAGS => '-Wno-shorten-64-to-32 -Wno-comma -Wno-unreachable-code -Wno-conditional-uninitialized -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-function -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers',
-    "HEADER_SEARCH_PATHS" => '"$(PODS_TARGET_SRCROOT)/duckdb/src/include" "$(PODS_TARGET_SRCROOT)/cpp"',
+    "HEADER_SEARCH_PATHS" => '"$(PODS_TARGET_SRCROOT)/../duckdb/src/include" "$(PODS_TARGET_SRCROOT)/cpp"',
   }
 
   load 'nitrogen/generated/ios/RNDuckDB+autolinking.rb'

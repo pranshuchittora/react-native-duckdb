@@ -29,26 +29,50 @@ const ALL_VALID = [...IN_TREE_EXTENSIONS, ...Object.keys(OUT_OF_TREE_EXTENSIONS)
 // DuckDB's extension_config.cmake loads these by default
 const DEFAULT_EXTENSIONS = ['core_functions', 'parquet'];
 
+function checkPackageJson(pkgPath) {
+  if (!fs.existsSync(pkgPath)) return null;
+  try {
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    const deps = {
+      ...(pkg.dependencies || {}),
+      ...(pkg.devDependencies || {}),
+    };
+    if (deps['react-native-duckdb']) {
+      return { path: pkgPath, pkg };
+    }
+  } catch (_) {
+    // skip malformed package.json
+  }
+  return null;
+}
+
 function findConsumerPackageJson(startDir) {
   let dir = startDir;
   const root = path.parse(dir).root;
 
   while (dir !== root) {
-    const pkgPath = path.join(dir, 'package.json');
-    if (fs.existsSync(pkgPath)) {
+    // Check this directory
+    const result = checkPackageJson(path.join(dir, 'package.json'));
+    if (result) return result;
+
+    // Check workspace siblings: if dir has a package.json with workspaces,
+    // search each workspace for the consumer package.json
+    const parentPkgPath = path.join(dir, 'package.json');
+    if (fs.existsSync(parentPkgPath)) {
       try {
-        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-        const deps = {
-          ...(pkg.dependencies || {}),
-          ...(pkg.devDependencies || {}),
-        };
-        if (deps['react-native-duckdb']) {
-          return { path: pkgPath, pkg };
+        const parentPkg = JSON.parse(fs.readFileSync(parentPkgPath, 'utf8'));
+        const workspaces = parentPkg.workspaces || [];
+        for (const ws of workspaces) {
+          // Handle simple workspace entries (not globs)
+          const wsDir = path.join(dir, ws);
+          const wsResult = checkPackageJson(path.join(wsDir, 'package.json'));
+          if (wsResult) return wsResult;
         }
       } catch (_) {
-        // skip malformed package.json
+        // skip
       }
     }
+
     dir = path.dirname(dir);
   }
   return null;
@@ -56,18 +80,23 @@ function findConsumerPackageJson(startDir) {
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { duckdbPath: null };
+  const opts = { duckdbPath: null, appRoot: null };
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--duckdb-path' && args[i + 1]) {
       opts.duckdbPath = args[i + 1];
       i++;
+    } else if (args[i] === '--app-root' && args[i + 1]) {
+      opts.appRoot = args[i + 1];
+      i++;
     } else if (args[i] === '--help') {
-      console.log('Usage: configure-extensions.js [--duckdb-path <path>]');
+      console.log('Usage: configure-extensions.js [--duckdb-path <path>] [--app-root <path>]');
       console.log('');
       console.log('Reads react-native-duckdb.build.extensions from consumer package.json');
       console.log('and generates duckdb/extension/extension_config_local.cmake.');
       console.log('');
+      console.log('--app-root  Directory to start searching for consumer package.json');
+      console.log('            (defaults to process.cwd())');
       console.log(`Valid extensions: ${ALL_VALID.join(', ')}`);
       process.exit(0);
     }
@@ -98,7 +127,7 @@ function generateCmake(extensions, duckdbPath) {
       if (OUT_OF_TREE_EXTENSIONS[ext]) {
         const oot = OUT_OF_TREE_EXTENSIONS[ext];
         lines.push(
-          `duckdb_extension_load(${ext} LOAD_TESTS GIT_URL ${oot.git_url} GIT_TAG ${oot.git_tag} APPLY_PATCHES)`
+          `duckdb_extension_load(${ext} GIT_URL ${oot.git_url} GIT_TAG ${oot.git_tag})`
         );
       } else {
         lines.push(`duckdb_extension_load(${ext})`);
@@ -125,8 +154,9 @@ function main() {
     process.exit(1);
   }
 
-  // Find consumer package.json
-  const consumer = findConsumerPackageJson(process.cwd());
+  // Find consumer package.json (start from --app-root or cwd)
+  const searchStart = opts.appRoot ? path.resolve(opts.appRoot) : process.cwd();
+  const consumer = findConsumerPackageJson(searchStart);
   let extensions = [];
 
   if (consumer) {

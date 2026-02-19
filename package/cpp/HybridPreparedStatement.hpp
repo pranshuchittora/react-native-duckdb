@@ -3,7 +3,7 @@
 #include "HybridPreparedStatementSpec.hpp"
 #include "HybridQueryResult.hpp"
 #include "types.hpp"
-#include "duckdb.hpp"
+#include "duckdb_includes.hpp"
 #include <memory>
 #include <NitroModules/Promise.hpp>
 

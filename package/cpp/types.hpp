@@ -5,7 +5,7 @@
 #include <variant>
 #include <memory>
 #include <optional>
-#include "duckdb.hpp"
+#include "duckdb_includes.hpp"
 #include <NitroModules/Null.hpp>
 #include <NitroModules/ArrayBuffer.hpp>
 #include "NumericColumn.hpp"

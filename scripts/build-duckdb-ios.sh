@@ -6,8 +6,8 @@ set -euo pipefail
 # Called from RNDuckDB.podspec prepare_command.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PACKAGE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-DUCKDB_DIR="${PACKAGE_DIR}/duckdb"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+DUCKDB_DIR="${REPO_DIR}/duckdb"
 BUILD_DIR="${DUCKDB_DIR}/build-ios"
 JOBS="$(sysctl -n hw.ncpu)"
 MIN_IOS="${1:-15.1}"

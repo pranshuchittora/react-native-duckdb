@@ -6,7 +6,7 @@
 #include "HybridStreamingResultSpec.hpp"
 #include "HybridAppenderSpec.hpp"
 #include "types.hpp"
-#include "duckdb.hpp"
+#include "duckdb_includes.hpp"
 #include <memory>
 #include <stdexcept>
 #include <mutex>

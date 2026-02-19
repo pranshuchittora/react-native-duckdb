@@ -1,6 +1,6 @@
 #pragma once
 
-#include "duckdb.hpp"
+#include "duckdb_includes.hpp"
 #include <string>
 #include <sstream>
 
