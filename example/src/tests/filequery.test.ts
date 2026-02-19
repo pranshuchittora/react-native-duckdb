@@ -2,27 +2,37 @@ import { TestRegistry } from '../testing/TestRegistry'
 import { HybridDuckDB } from 'react-native-duckdb'
 
 // File query tests: Parquet, CSV, JSON
-// DuckDB resolves relative paths from the DB file's directory on mobile.
-// We open a file-based DB so COPY TO / FROM use the documents directory.
+// On mobile, the cwd is '/' (read-only). We must use absolute paths for all
+// COPY TO / FROM / SELECT FROM file operations. Pattern: open a file-based DB,
+// get the DB directory via PRAGMA database_list, build absolute paths from that.
+
+function getDbDir(db: ReturnType<typeof HybridDuckDB.open>): string {
+  const result = db.executeSync('PRAGMA database_list')
+  const dbPath = result.toRows()[0].file as string
+  return dbPath.substring(0, dbPath.lastIndexOf('/'))
+}
 
 TestRegistry.registerTest('File Queries', 'Parquet: write and read via file path', async () => {
   const db = HybridDuckDB.open('test_filequery.db', {})
   try {
+    const dir = getDbDir(db)
+    const parquetPath = `${dir}/test.parquet`
+
     // Create test data
     db.executeSync(
       "CREATE TABLE test_parquet AS SELECT i AS id, 'name_' || i AS name, i * 1.5 AS value FROM range(100) t(i)"
     )
 
     // Export to Parquet
-    db.executeSync("COPY test_parquet TO 'test.parquet' (FORMAT PARQUET)")
+    db.executeSync(`COPY test_parquet TO '${parquetPath}' (FORMAT PARQUET)`)
 
     // Query the Parquet file directly
-    const countResult = db.executeSync("SELECT count(*) as cnt FROM 'test.parquet'")
+    const countResult = db.executeSync(`SELECT count(*) as cnt FROM '${parquetPath}'`)
     const cnt = Number(countResult.toRows()[0].cnt)
     if (cnt !== 100) throw new Error(`Expected 100 rows, got ${cnt}`)
 
     // Filtered query on Parquet file
-    const filtered = db.executeSync("SELECT * FROM 'test.parquet' WHERE id = 50")
+    const filtered = db.executeSync(`SELECT * FROM '${parquetPath}' WHERE id = 50`)
     const rows = filtered.toRows()
     if (rows.length !== 1) throw new Error(`Expected 1 row for id=50, got ${rows.length}`)
     if (rows[0].name !== 'name_50') throw new Error(`Expected name='name_50', got ${rows[0].name}`)
@@ -37,20 +47,23 @@ TestRegistry.registerTest('File Queries', 'CSV: write and read via read_csv', as
   // CSV reading is BUILT-IN — no extension needed
   const db = HybridDuckDB.open('test_csv_fq.db', {})
   try {
+    const dir = getDbDir(db)
+    const csvPath = `${dir}/test.csv`
+
     db.executeSync(
       "CREATE TABLE test_csv AS SELECT i AS id, 'item_' || i AS label FROM range(50) t(i)"
     )
 
     // Export to CSV with header
-    db.executeSync("COPY test_csv TO 'test.csv' (FORMAT CSV, HEADER)")
+    db.executeSync(`COPY test_csv TO '${csvPath}' (FORMAT CSV, HEADER)`)
 
     // Read back via read_csv
-    const countResult = db.executeSync("SELECT count(*) as cnt FROM read_csv('test.csv')")
+    const countResult = db.executeSync(`SELECT count(*) as cnt FROM read_csv('${csvPath}')`)
     const cnt = Number(countResult.toRows()[0].cnt)
     if (cnt !== 50) throw new Error(`Expected 50 rows, got ${cnt}`)
 
     // Filtered query with auto-detection
-    const filtered = db.executeSync("SELECT * FROM read_csv('test.csv') WHERE id = 25")
+    const filtered = db.executeSync(`SELECT * FROM read_csv('${csvPath}') WHERE id = 25`)
     const rows = filtered.toRows()
     if (rows.length !== 1) throw new Error(`Expected 1 row for id=25, got ${rows.length}`)
     if (rows[0].label !== 'item_25') throw new Error(`Expected label='item_25', got ${rows[0].label}`)
@@ -65,20 +78,23 @@ TestRegistry.registerTest('File Queries', 'JSON: write and read via read_json', 
   // JSON reading requires the `json` extension
   const db = HybridDuckDB.open('test_json_fq.db', {})
   try {
+    const dir = getDbDir(db)
+    const jsonPath = `${dir}/test.json`
+
     db.executeSync(
       "CREATE TABLE test_json AS SELECT i AS id, 'record_' || i AS tag FROM range(30) t(i)"
     )
 
     // Export to JSON
-    db.executeSync("COPY test_json TO 'test.json' (FORMAT JSON)")
+    db.executeSync(`COPY test_json TO '${jsonPath}' (FORMAT JSON)`)
 
     // Read back via read_json
-    const countResult = db.executeSync("SELECT count(*) as cnt FROM read_json('test.json')")
+    const countResult = db.executeSync(`SELECT count(*) as cnt FROM read_json('${jsonPath}')`)
     const cnt = Number(countResult.toRows()[0].cnt)
     if (cnt !== 30) throw new Error(`Expected 30 rows, got ${cnt}`)
 
     // Filtered query
-    const filtered = db.executeSync("SELECT * FROM read_json('test.json') WHERE id = 15")
+    const filtered = db.executeSync(`SELECT * FROM read_json('${jsonPath}') WHERE id = 15`)
     const rows = filtered.toRows()
     if (rows.length !== 1) throw new Error(`Expected 1 row for id=15, got ${rows.length}`)
     if (rows[0].tag !== 'record_15') throw new Error(`Expected tag='record_15', got ${rows[0].tag}`)
@@ -92,14 +108,17 @@ TestRegistry.registerTest('File Queries', 'JSON: write and read via read_json', 
 TestRegistry.registerTest('File Queries', 'Parquet: query with aggregation', async () => {
   const db = HybridDuckDB.open('test_parquet_agg.db', {})
   try {
+    const dir = getDbDir(db)
+    const parquetPath = `${dir}/agg.parquet`
+
     db.executeSync(
       'CREATE TABLE agg_data AS SELECT i AS id, (i * 2.5) AS amount FROM range(100) t(i)'
     )
-    db.executeSync("COPY agg_data TO 'agg.parquet' (FORMAT PARQUET)")
+    db.executeSync(`COPY agg_data TO '${parquetPath}' (FORMAT PARQUET)`)
 
     // Aggregate directly on Parquet file
     const result = db.executeSync(
-      "SELECT sum(amount) as total, avg(amount) as average FROM 'agg.parquet'"
+      `SELECT sum(amount) as total, avg(amount) as average FROM '${parquetPath}'`
     )
     const row = result.toRows()[0]
     const total = Number(row.total)
@@ -119,16 +138,19 @@ TestRegistry.registerTest('File Queries', 'Parquet: query with aggregation', asy
 TestRegistry.registerTest('File Queries', 'CSV: read with custom options', async () => {
   const db = HybridDuckDB.open('test_csv_custom.db', {})
   try {
+    const dir = getDbDir(db)
+    const csvPath = `${dir}/pipe.csv`
+
     db.executeSync(
       'CREATE TABLE custom_csv AS SELECT i AS col1, \'val_\' || i AS col2 FROM range(20) t(i)'
     )
 
     // Export with pipe delimiter and no header
-    db.executeSync("COPY custom_csv TO 'pipe.csv' (FORMAT CSV, DELIMITER '|', HEADER false)")
+    db.executeSync(`COPY custom_csv TO '${csvPath}' (FORMAT CSV, DELIMITER '|', HEADER false)`)
 
     // Read back with matching custom options
     const result = db.executeSync(
-      "SELECT * FROM read_csv('pipe.csv', delim='|', header=false, columns={'col1': 'INTEGER', 'col2': 'VARCHAR'})"
+      `SELECT * FROM read_csv('${csvPath}', delim='|', header=false, columns={'col1': 'INTEGER', 'col2': 'VARCHAR'})`
     )
     const rows = result.toRows()
     if (rows.length !== 20) throw new Error(`Expected 20 rows, got ${rows.length}`)
