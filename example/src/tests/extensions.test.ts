@@ -46,14 +46,20 @@ TestRegistry.registerTest('Extensions', 'LOAD: statically linked extensions load
 TestRegistry.registerTest('Extensions', 'SQLite scanner: ATTACH and query SQLite database', async () => {
   const db = HybridDuckDB.open('test_sqlite_ext.db', {})
   try {
+    // Get the absolute path of the DB directory for constructing the sqlite path
+    const dbListResult = db.executeSync('PRAGMA database_list')
+    const dbPath = dbListResult.toRows()[0].file as string
+    const dbDir = dbPath.substring(0, dbPath.lastIndexOf('/'))
+    const sqlitePath = `${dbDir}/test_scanner.sqlite`
+
     // Create a SQLite database via the sqlite_scanner extension
-    db.executeSync("ATTACH 'test_scanner.sqlite' AS sqlitedb (TYPE SQLITE)")
+    db.executeSync(`ATTACH '${sqlitePath}' AS sqlitedb (TYPE SQLITE)`)
     db.executeSync('CREATE TABLE sqlitedb.users (id INTEGER, name VARCHAR)')
     db.executeSync("INSERT INTO sqlitedb.users VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie')")
     db.executeSync('DETACH sqlitedb')
 
     // Re-attach and query
-    db.executeSync("ATTACH 'test_scanner.sqlite' AS sqlitedb (TYPE SQLITE)")
+    db.executeSync(`ATTACH '${sqlitePath}' AS sqlitedb (TYPE SQLITE)`)
     const countResult = db.executeSync('SELECT count(*) as cnt FROM sqlitedb.users')
     const cnt = Number(countResult.toRows()[0].cnt)
     if (cnt !== 3) throw new Error(`Expected 3 users, got ${cnt}`)
@@ -72,7 +78,8 @@ TestRegistry.registerTest('Extensions', 'SQLite scanner: ATTACH and query SQLite
 })
 
 TestRegistry.registerTest('Extensions', 'duckdb_extensions: verify loaded extensions', async () => {
-  const db = HybridDuckDB.open(':memory:', {})
+  // Use a file-based DB to ensure home_directory is set (required by duckdb_extensions())
+  const db = HybridDuckDB.open('test_ext_list.db', {})
   try {
     const result = db.executeSync(
       "SELECT extension_name, loaded, installed FROM duckdb_extensions() WHERE loaded = true ORDER BY extension_name"
@@ -97,5 +104,6 @@ TestRegistry.registerTest('Extensions', 'duckdb_extensions: verify loaded extens
     console.debug(`sqlite_scanner installed=${sqliteRows[0].installed}`)
   } finally {
     db.close()
+    HybridDuckDB.deleteDatabase('test_ext_list.db')
   }
 })

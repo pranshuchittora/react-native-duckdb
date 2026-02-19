@@ -23,6 +23,9 @@ std::shared_ptr<HybridDatabaseSpec> HybridDuckDB::open(
   dbConfig.SetOptionByName("memory_limit", duckdb::Value("256MB"));
   dbConfig.options.use_temporary_directory = true;
   dbConfig.options.temporary_directory = docPath + "/.duckdb_tmp";
+  // Set home_directory so duckdb_extensions(), ATTACH relative paths, and
+  // extension auto-loading can find the right location on mobile.
+  dbConfig.SetOptionByName("home_directory", duckdb::Value(docPath));
 
   // Apply user config overrides (may include threads, memory_limit, etc.)
   for (const auto& [key, value] : config) {
