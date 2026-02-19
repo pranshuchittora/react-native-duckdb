@@ -4,6 +4,7 @@ export type { Database } from './specs/Database.nitro'
 export type { QueryResult } from './specs/QueryResult.nitro'
 export type { PreparedStatement } from './specs/PreparedStatement.nitro'
 export type { StreamingResult } from './specs/StreamingResult.nitro'
+export type { Appender } from './specs/Appender.nitro'
 export type {
   DuckDBConfig,
   DuckDBValue,
@@ -15,6 +16,7 @@ export type {
   CloseOptions,
   ConnectionInfo,
   StreamingOptions,
+  AppenderOptions,
 } from './types'
 export { DuckDBError } from './DuckDBError'
 export { createWrappedDatabase, executeTransaction } from './transaction'
@@ -24,3 +26,4 @@ export type {
   TransactionInfo,
 } from './transaction'
 export { streamChunks } from './streaming'
+export { withAppender } from './appender'
