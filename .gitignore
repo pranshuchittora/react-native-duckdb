@@ -10,12 +10,10 @@ build/
 Pods/
 *.xcworkspace/
 
-# DuckDB amalgamation — downloaded by scripts/download-duckdb.sh
-# These files are 30-50MB and are fetched from DuckDB GitHub releases.
-# Run `./scripts/download-duckdb.sh` to populate package/vendor/duckdb/.
-package/vendor/duckdb/duckdb.cpp
-package/vendor/duckdb/duckdb.hpp
-package/vendor/duckdb/duckdb.h
+# DuckDB build artifacts (generated at build time)
+duckdb/build-*/
+duckdb/.extensions-configured
+duckdb/extension/extension_config_local.cmake
 
 # iOS
 example/ios/Podfile.lock

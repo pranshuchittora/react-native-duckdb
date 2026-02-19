@@ -1,14 +1,15 @@
-# DuckDB Amalgamation
+# DuckDB
 
-This directory contains the DuckDB amalgamation files (duckdb.cpp, duckdb.hpp, duckdb.h).
+DuckDB is now built from source via git submodule at `react-native-duckdb/duckdb/`.
+The amalgamation files have been removed.
 
-**These files are gitignored** because they are 30-50MB uncompressed.
+The submodule is pinned to the version specified in `DUCKDB_VERSION`.
 
-To download/update the amalgamation:
-
+To update:
 ```bash
-./scripts/download-duckdb.sh          # defaults to v1.4.4
-./scripts/download-duckdb.sh v1.5.0   # specific version
+cd duckdb
+git fetch --tags
+git checkout <new-tag>
+cd ..
+git add duckdb
 ```
-
-The VERSION file tracks the currently downloaded version.
