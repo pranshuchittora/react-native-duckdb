@@ -8,6 +8,7 @@
 #include "duckdb.hpp"
 #include <NitroModules/Null.hpp>
 #include <NitroModules/ArrayBuffer.hpp>
+#include "NumericColumn.hpp"
 
 namespace margelo::nitro::rnduckdb {
 
@@ -17,6 +18,10 @@ using namespace margelo::nitro;
 // TS: null | boolean | number | Int64 | string | ArrayBuffer
 using DuckDBValue = std::variant<NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>;
 using DuckDBParams = std::vector<DuckDBValue>;
+
+// Matches the Nitrogen-generated variant for ColumnData:
+// TS: NumericColumn | (string | null)[]
+using ColumnData = std::variant<NumericColumn, std::vector<std::variant<NullType, std::string>>>;
 
 // Convert JS param values to DuckDB Values for PreparedStatement::Execute()
 inline duckdb::vector<duckdb::Value> toValues(const DuckDBParams& params) {

@@ -6,6 +6,8 @@ export type { PreparedStatement } from './specs/PreparedStatement.nitro'
 export type {
   DuckDBConfig,
   DuckDBValue,
+  NumericColumn,
+  ColumnData,
   BatchCommand,
   BatchResult,
   AttachOptions,

@@ -22,13 +22,16 @@ public:
   std::vector<std::string> getColumnTypes() override;
 
   // Methods
-  std::vector<DuckDBValue> getColumn(double index) override;
+  ColumnData getColumn(double index) override;
   std::vector<std::unordered_map<std::string, DuckDBValue>> toRows() override;
 
   size_t getExternalMemorySize() noexcept override;
 
 private:
   void materialize(duckdb::MaterializedQueryResult& result);
+  bool isNumericType(const std::string& type) const;
+  bool isBigIntType(const std::string& type) const;
+  bool isBoolType(const std::string& type) const;
 
   // Cached metadata
   size_t _rowCount;
@@ -38,6 +41,9 @@ private:
 
   // Columnar data storage — one vector per column
   std::vector<std::vector<DuckDBValue>> _columns;
+
+  // Cached columnar typed arrays — built lazily in getColumn()
+  std::vector<std::optional<ColumnData>> _columnCache;
 
   static constexpr auto TAG = "QueryResult";
 };

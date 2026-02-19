@@ -1,5 +1,5 @@
 import type { HybridObject } from 'react-native-nitro-modules'
-import type { DuckDBValue } from '../types'
+import type { DuckDBValue, ColumnData } from '../types'
 
 export interface QueryResult extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   readonly rowCount: number
@@ -7,6 +7,6 @@ export interface QueryResult extends HybridObject<{ ios: 'c++'; android: 'c++' }
   readonly columnCount: number
   readonly columnNames: string[]
   readonly columnTypes: string[]
-  getColumn(index: number): DuckDBValue[]
+  getColumn(index: number): ColumnData
   toRows(): Record<string, DuckDBValue>[]
 }

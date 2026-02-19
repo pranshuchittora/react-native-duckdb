@@ -13,13 +13,15 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
-
+// Forward declaration of `NumericColumn` to properly resolve imports.
+namespace margelo::nitro::rnduckdb { struct NumericColumn; }
 
 #include <string>
 #include <vector>
+#include "NumericColumn.hpp"
 #include <NitroModules/Null.hpp>
-#include <NitroModules/ArrayBuffer.hpp>
 #include <variant>
+#include <NitroModules/ArrayBuffer.hpp>
 #include <unordered_map>
 
 namespace margelo::nitro::rnduckdb {
@@ -57,7 +59,7 @@ namespace margelo::nitro::rnduckdb {
 
     public:
       // Methods
-      virtual std::vector<std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>> getColumn(double index) = 0;
+      virtual std::variant<NumericColumn, std::vector<std::variant<nitro::NullType, std::string>>> getColumn(double index) = 0;
       virtual std::vector<std::unordered_map<std::string, std::variant<nitro::NullType, bool, int64_t, std::shared_ptr<ArrayBuffer>, std::string, double>>> toRows() = 0;
 
     protected:
