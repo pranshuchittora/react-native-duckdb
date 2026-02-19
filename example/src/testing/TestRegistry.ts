@@ -5,7 +5,12 @@ class TestRegistryClass {
 
   registerTest(category: string, name: string, run: () => Promise<void>) {
     const tests = this.categories.get(category) || []
-    tests.push({ name, category, run })
+    const existing = tests.findIndex((t) => t.name === name)
+    if (existing !== -1) {
+      tests[existing] = { name, category, run }
+    } else {
+      tests.push({ name, category, run })
+    }
     this.categories.set(category, tests)
   }
 
