@@ -219,6 +219,51 @@ stmt.executeSync([2, 'bob'])
 stmt.finalize()
 ```
 
+#### `cancel()`
+
+```ts
+cancel(): void
+```
+
+Interrupts any running query on this connection. Thread-safe: can be called from the JS thread while an async query runs on the background thread. If no query is running, this is a no-op. After cancellation, the connection is immediately reusable for new queries.
+
+```ts
+const promise = db.execute('SELECT * FROM huge_table')
+db.cancel() // interrupts the query
+// promise rejects with cancellation error
+```
+
+#### `executeSyncNamed(sql, params)`
+
+```ts
+executeSyncNamed(sql: string, params: Record<string, DuckDBValue>): QueryResult
+```
+
+Executes a SQL statement synchronously with named `$param` parameters.
+
+- **sql** — SQL query string with `$name` placeholders.
+- **params** — Named parameter values as key-value pairs.
+- **Returns** — A `QueryResult` with row/column data.
+
+```ts
+const result = db.executeSyncNamed(
+  'SELECT * FROM users WHERE name = $name AND age > $minAge',
+  { name: 'Alice', minAge: 25 }
+)
+```
+
+#### `executeNamed(sql, params)`
+
+```ts
+executeNamed(sql: string, params: Record<string, DuckDBValue>): Promise<QueryResult>
+```
+
+Executes a SQL statement asynchronously with named `$param` parameters.
+
+- **sql** — SQL query string with `$name` placeholders.
+- **params** — Named parameter values as key-value pairs.
+- **Returns** — Promise resolving to a `QueryResult`.
+
 #### `stream(sql, params?)`
 
 ```ts
@@ -238,6 +283,25 @@ while (true) {
   if (!chunk) break
   console.log(chunk.toRows())
 }
+```
+
+#### `streamNamed(sql, params)`
+
+```ts
+streamNamed(sql: string, params: Record<string, DuckDBValue>): Promise<StreamingResult>
+```
+
+Creates a streaming query result with named `$param` parameters. Uses a dedicated connection internally.
+
+- **sql** — SQL query string with `$name` placeholders.
+- **params** — Named parameter values as key-value pairs.
+- **Returns** — Promise resolving to a `StreamingResult`.
+
+```ts
+const stream = await db.streamNamed(
+  'SELECT * FROM events WHERE type = $type',
+  { type: 'click' }
+)
 ```
 
 #### `createAppender(table, options?)`
@@ -408,6 +472,27 @@ execute(params?: DuckDBValue[]): Promise<QueryResult>
 ```
 
 Executes the prepared statement asynchronously.
+
+#### `executeSyncNamed(params)`
+
+```ts
+executeSyncNamed(params: Record<string, DuckDBValue>): QueryResult
+```
+
+Executes the prepared statement synchronously with named parameters.
+
+```ts
+const stmt = db.prepare('SELECT $x + $y AS sum')
+const result = stmt.executeSyncNamed({ x: 10, y: 20 })
+```
+
+#### `executeNamed(params)`
+
+```ts
+executeNamed(params: Record<string, DuckDBValue>): Promise<QueryResult>
+```
+
+Executes the prepared statement asynchronously with named parameters.
 
 #### `finalize()`
 
@@ -630,6 +715,19 @@ type DuckDBValue = null | boolean | number | Int64 | string | ArrayBuffer
 ```
 
 Union type for all values that can be passed to/from DuckDB. Maps to the C++ variant: `std::variant<std::monostate, bool, double, int64_t, std::string, std::shared_ptr<ArrayBuffer>>`.
+
+### `DuckDBNamedParams`
+
+```ts
+type DuckDBNamedParams = Record<string, DuckDBValue>
+```
+
+Named parameter map for `$name`-style query parameters. Keys are parameter names (without the `$` prefix), values are `DuckDBValue`. Parameter name matching is case-insensitive.
+
+```ts
+const params: DuckDBNamedParams = { name: 'Alice', age: 30 }
+db.executeSyncNamed('SELECT $name, $age', params)
+```
 
 ### `DuckDBConfig`
 
