@@ -85,6 +85,36 @@ await withAppender(db, 'measurements', (appender) => {
 db.close()
 ```
 
+## Extensions
+
+DuckDB extensions are statically linked at build time. Configure them in your `package.json`:
+
+```json
+{
+  "react-native-duckdb": {
+    "build": {
+      "extensions": ["core_functions", "parquet", "json", "icu"]
+    }
+  }
+}
+```
+
+> **We strongly recommend `core_functions`** — without it, common SQL functions like `sum()`, `avg()`, `list_value()`, and `uuid()` won't be available.
+
+After changing extensions, run `pod install` (iOS) and rebuild both platforms.
+
+**Query files directly** (requires the corresponding extension):
+
+```ts
+// Parquet (requires 'parquet' extension)
+const result = db.executeSync("SELECT * FROM 'data.parquet'")
+
+// CSV (built-in — no extension needed)
+const result = db.executeSync("SELECT * FROM read_csv('data.csv')")
+```
+
+See [docs/API.md](docs/API.md) for the full extension reference, available extensions, SQLite scanner usage, and file query examples.
+
 ## API Reference
 
 See [docs/API.md](docs/API.md) for the complete API reference with signatures, parameters, and examples.

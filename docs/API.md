@@ -43,6 +43,109 @@ Deletes a database file and its associated WAL file from disk.
 
 ---
 
+## Extensions
+
+DuckDB's power comes from its extensions. On mobile, extensions are **statically linked** at build time — you choose which ones to include, and they become part of your native binary.
+
+### Extension Configuration
+
+Configure extensions in your app's `package.json`:
+
+```json
+{
+  "react-native-duckdb": {
+    "build": {
+      "extensions": ["core_functions", "parquet", "json"]
+    }
+  }
+}
+```
+
+- **Default is NO extensions** — you must explicitly list every extension you need
+- Invalid extension names will cause a **build error** with a clear message
+- After changing extensions, run `pod install` (iOS) and rebuild both platforms
+
+### Recommended Extensions
+
+> **`core_functions` is essential for a full DuckDB experience.** Without it, common SQL functions like `sum()`, `avg()`, `list_value()`, `string_split()`, and `uuid()` will be unavailable. We strongly recommend adding it to every project to unleash the full power of DuckDB's analytical engine.
+
+### Available Extensions
+
+| Extension | Description | Required For |
+|-----------|-------------|-------------|
+| `core_functions` | Essential SQL functions (sum, avg, list_value, uuid, etc.) | Basic SQL operations — **strongly recommended** |
+| `parquet` | Apache Parquet file format support | `SELECT * FROM 'file.parquet'` |
+| `json` | JSON file format support | `read_json('file.json')` |
+| `icu` | Unicode collation and text functions | Locale-aware sorting and string operations |
+| `sqlite_scanner` | Read and write SQLite databases | `ATTACH 'file.sqlite' (TYPE sqlite)` |
+| `autocomplete` | SQL autocomplete suggestions | Editor integrations |
+| `tpch` | TPC-H benchmark data generator | Benchmarking |
+| `tpcds` | TPC-DS benchmark data generator | Benchmarking |
+| `delta` | Delta Lake table format | Reading Delta Lake tables |
+
+### File Queries
+
+DuckDB can query files directly. Each format requires its own extension (except CSV, which is built-in).
+
+**Parquet** — requires `parquet` extension:
+
+```sql
+SELECT * FROM 'data.parquet';
+SELECT count(*), avg(value) FROM 'measurements.parquet' WHERE sensor = 'temp';
+```
+
+**CSV** — built-in, no extension needed:
+
+```sql
+SELECT * FROM read_csv('data.csv');
+SELECT * FROM read_csv('data.tsv', delim='\t', header=true);
+```
+
+**JSON** — requires `json` extension:
+
+```sql
+SELECT * FROM read_json('data.json');
+SELECT * FROM read_json('events.jsonl', format='newline_delimited');
+```
+
+> **File paths on mobile:** Files must be in the app's documents directory or bundled with the app. When using a file-based database (`HybridDuckDB.open('name.db', {})`), relative paths in `COPY TO` and file queries resolve from the database file's directory.
+
+### SQLite Scanner
+
+The `sqlite_scanner` extension lets you read and write SQLite databases from DuckDB.
+
+Requires the `sqlite_scanner` extension in your build config.
+
+```sql
+-- Attach a SQLite database
+ATTACH 'path/to/database.sqlite' AS mydb (TYPE sqlite);
+
+-- Query tables from the attached SQLite database
+SELECT * FROM mydb.users WHERE active = 1;
+
+-- Detach when done
+DETACH mydb;
+```
+
+### Runtime Extension Loading
+
+On mobile, all extensions are **statically linked** at build time. The `LOAD` statement works as a no-op for extensions already in your build config:
+
+```sql
+-- Succeeds as a no-op if parquet is in your build config
+LOAD 'parquet';
+```
+
+- **iOS** prohibits dynamic loading (`dlopen`) — runtime extension installation from the network is not supported
+- **Android** uses the same static-only model for consistency and security
+- To check which extensions are available, query `duckdb_extensions()`:
+
+```sql
+SELECT extension_name, loaded, installed FROM duckdb_extensions();
+```
+
+---
+
 ## Database
 
 Represents an open DuckDB database connection. Supports synchronous and asynchronous query execution, streaming, appender, prepared statements, multi-connection, attach/detach, and batch execution.
