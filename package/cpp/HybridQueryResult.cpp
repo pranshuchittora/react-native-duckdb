@@ -1,4 +1,5 @@
 #include "HybridQueryResult.hpp"
+#include "json_serializer.hpp"
 #include <stdexcept>
 
 namespace margelo::nitro::rnduckdb {
@@ -212,6 +213,17 @@ void HybridQueryResult::materialize(duckdb::MaterializedQueryResult& result) {
           case duckdb::LogicalTypeId::BIT: {
             auto val = chunk.GetValue(static_cast<duckdb::idx_t>(col), row);
             _columns[col].push_back(val.ToString());
+            break;
+          }
+
+          // Complex types — JSON string representations
+          case duckdb::LogicalTypeId::LIST:
+          case duckdb::LogicalTypeId::STRUCT:
+          case duckdb::LogicalTypeId::MAP:
+          case duckdb::LogicalTypeId::ARRAY:
+          case duckdb::LogicalTypeId::UNION: {
+            auto val = chunk.GetValue(static_cast<duckdb::idx_t>(col), row);
+            _columns[col].push_back(valueToJson(val));
             break;
           }
 
