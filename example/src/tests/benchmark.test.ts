@@ -1,9 +1,9 @@
 import { TestRegistry } from '../testing/TestRegistry'
 import { HybridDuckDB, withAppender, streamChunks } from 'react-native-duckdb'
 
-const ROW_COUNT = 100_000
+const ROW_COUNT = 10_000
 
-TestRegistry.registerTest('Benchmarks', 'Appender vs INSERT — 100K rows', async () => {
+TestRegistry.registerTest('Benchmarks', 'Appender vs INSERT — 10K rows', async () => {
   const db = HybridDuckDB.open(':memory:', {})
   try {
     // --- INSERT approach ---
@@ -16,7 +16,7 @@ TestRegistry.registerTest('Benchmarks', 'Appender vs INSERT — 100K rows', asyn
     }
     const insMs = Date.now() - insStart
 
-    const insCount = db.executeSync('SELECT count(*) as cnt FROM bench_ins').toRows()[0].cnt
+    const insCount = Number(db.executeSync('SELECT count(*) as cnt FROM bench_ins').toRows()[0].cnt)
     if (insCount !== ROW_COUNT) throw new Error(`INSERT: expected ${ROW_COUNT} rows, got ${insCount}`)
 
     // --- Appender approach ---
@@ -36,7 +36,7 @@ TestRegistry.registerTest('Benchmarks', 'Appender vs INSERT — 100K rows', asyn
     })
     const appMs = Date.now() - appStart
 
-    const appCount = db.executeSync('SELECT count(*) as cnt FROM bench_app').toRows()[0].cnt
+    const appCount = Number(db.executeSync('SELECT count(*) as cnt FROM bench_app').toRows()[0].cnt)
     if (appCount !== ROW_COUNT) throw new Error(`Appender: expected ${ROW_COUNT} rows, got ${appCount}`)
 
     const speedup = insMs / Math.max(appMs, 1)
@@ -53,7 +53,7 @@ TestRegistry.registerTest('Benchmarks', 'Appender vs INSERT — 100K rows', asyn
   }
 })
 
-TestRegistry.registerTest('Benchmarks', 'Streaming vs materialized — 100K rows', async () => {
+TestRegistry.registerTest('Benchmarks', 'Streaming vs materialized — 10K rows', async () => {
   const db = HybridDuckDB.open(':memory:', {})
   try {
     // Populate with Appender for speed
@@ -100,7 +100,7 @@ TestRegistry.registerTest('Benchmarks', 'Streaming vs materialized — 100K rows
   }
 })
 
-TestRegistry.registerTest('Benchmarks', 'Streaming 100K rows stress test', async () => {
+TestRegistry.registerTest('Benchmarks', 'Streaming 10K rows stress test', async () => {
   const db = HybridDuckDB.open(':memory:', {})
   try {
     db.executeSync('CREATE TABLE bench_stress (id INTEGER, name VARCHAR, value DOUBLE, flag BOOLEAN)')

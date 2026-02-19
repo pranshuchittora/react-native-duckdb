@@ -12,8 +12,9 @@ TestRegistry.registerTest('Appender', 'appendRow basic — 10 rows', async () =>
     appender.close()
     const result = db.executeSync('SELECT count(*) as cnt FROM app_basic')
     const rows = result.toRows()
-    console.debug(`appendRow basic: count=${rows[0].cnt}`)
-    if (rows[0].cnt !== 10) throw new Error(`Expected 10 rows, got ${rows[0].cnt}`)
+    const cnt = Number(rows[0].cnt)
+    console.debug(`appendRow basic: count=${cnt}`)
+    if (cnt !== 10) throw new Error(`Expected 10 rows, got ${cnt}`)
   } finally {
     db.close()
   }
@@ -32,8 +33,9 @@ TestRegistry.registerTest('Appender', 'appendRows batch — 100 rows', async () 
     appender.close()
     const result = db.executeSync('SELECT count(*) as cnt FROM app_batch')
     const rows = result.toRows()
-    console.debug(`appendRows batch: count=${rows[0].cnt}`)
-    if (rows[0].cnt !== 100) throw new Error(`Expected 100 rows, got ${rows[0].cnt}`)
+    const cnt = Number(rows[0].cnt)
+    console.debug(`appendRows batch: count=${cnt}`)
+    if (cnt !== 100) throw new Error(`Expected 100 rows, got ${cnt}`)
   } finally {
     db.close()
   }
@@ -91,7 +93,7 @@ TestRegistry.registerTest('Appender', 'flush manual — data visible mid-stream'
     }
     appender.flush()
     const mid = db.executeSync('SELECT count(*) as cnt FROM app_flush')
-    const midCount = mid.toRows()[0].cnt as number
+    const midCount = Number(mid.toRows()[0].cnt)
     console.debug(`after flush: ${midCount} rows`)
     if (midCount !== 50) throw new Error(`Expected 50 rows after flush, got ${midCount}`)
     for (let i = 50; i < 100; i++) {
@@ -99,7 +101,7 @@ TestRegistry.registerTest('Appender', 'flush manual — data visible mid-stream'
     }
     appender.close()
     const final = db.executeSync('SELECT count(*) as cnt FROM app_flush')
-    const finalCount = final.toRows()[0].cnt as number
+    const finalCount = Number(final.toRows()[0].cnt)
     console.debug(`after close: ${finalCount} rows`)
     if (finalCount !== 100) throw new Error(`Expected 100 rows after close, got ${finalCount}`)
   } finally {
@@ -118,8 +120,9 @@ TestRegistry.registerTest('Appender', 'flushEvery option — auto-flush every N 
     appender.close()
     const result = db.executeSync('SELECT count(*) as cnt FROM app_flush_every')
     const rows = result.toRows()
-    console.debug(`flushEvery: count=${rows[0].cnt}`)
-    if (rows[0].cnt !== 25) throw new Error(`Expected 25 rows, got ${rows[0].cnt}`)
+    const cnt = Number(rows[0].cnt)
+    console.debug(`flushEvery: count=${cnt}`)
+    if (cnt !== 25) throw new Error(`Expected 25 rows, got ${cnt}`)
   } finally {
     db.close()
   }
