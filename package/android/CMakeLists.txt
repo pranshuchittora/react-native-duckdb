@@ -8,13 +8,24 @@ set(CMAKE_CXX_STANDARD 20)
 set(DUCKDB_SOURCE_DIR "${CMAKE_SOURCE_DIR}/../../duckdb")
 
 # Run extension configuration script to generate extension_config_local.cmake.
-# The script walks up from WORKING_DIRECTORY to find the consumer's package.json.
 # APP_ROOT_DIR is passed from build.gradle (rootProject.projectDir.parentFile).
+# DUCKDB_EXTENSIONS is set from gradle.properties when Expo config plugin is used.
 find_program(NODE_EXECUTABLE node REQUIRED)
+
+set(CONFIGURE_ARGS
+  ${NODE_EXECUTABLE} ${CMAKE_SOURCE_DIR}/../../scripts/configure-extensions.js
+  --duckdb-path ${DUCKDB_SOURCE_DIR}
+  --app-root ${APP_ROOT_DIR}
+)
+
+# When extensions are provided via gradle.properties (Expo managed workflow),
+# pass them directly — this overrides package.json discovery.
+if(NOT "${DUCKDB_EXTENSIONS}" STREQUAL "")
+  list(APPEND CONFIGURE_ARGS --extensions "${DUCKDB_EXTENSIONS}")
+endif()
+
 execute_process(
-  COMMAND ${NODE_EXECUTABLE} ${CMAKE_SOURCE_DIR}/../../scripts/configure-extensions.js
-    --duckdb-path ${DUCKDB_SOURCE_DIR}
-    --app-root ${APP_ROOT_DIR}
+  COMMAND ${CONFIGURE_ARGS}
   RESULT_VARIABLE CONFIGURE_RESULT
 )
 if(NOT CONFIGURE_RESULT EQUAL 0)

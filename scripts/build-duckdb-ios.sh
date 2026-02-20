@@ -16,7 +16,24 @@ echo "=== react-native-duckdb: Building DuckDB for iOS (min=${MIN_IOS}, jobs=${J
 
 # Step 1: Configure extensions
 echo "--- Configuring extensions ---"
-node "${SCRIPT_DIR}/configure-extensions.js" --duckdb-path "${DUCKDB_DIR}"
+
+# Try to read extensions from Podfile.properties.json (Expo managed workflow)
+EXTENSIONS_FROM_PROPS=""
+for CANDIDATE in "${REPO_DIR}/../ios/Podfile.properties.json" "${REPO_DIR}/../../ios/Podfile.properties.json"; do
+  if [ -f "$CANDIDATE" ]; then
+    EXTENSIONS_FROM_PROPS=$(node -e "
+      const p = JSON.parse(require('fs').readFileSync('$CANDIDATE', 'utf8'));
+      if (p['react-native-duckdb.extensions']) process.stdout.write(p['react-native-duckdb.extensions']);
+    " 2>/dev/null || true)
+    break
+  fi
+done
+
+if [ -n "$EXTENSIONS_FROM_PROPS" ]; then
+  node "${SCRIPT_DIR}/configure-extensions.js" --duckdb-path "${DUCKDB_DIR}" --extensions "${EXTENSIONS_FROM_PROPS}"
+else
+  node "${SCRIPT_DIR}/configure-extensions.js" --duckdb-path "${DUCKDB_DIR}"
+fi
 
 # Shared cmake flags
 CMAKE_COMMON=(

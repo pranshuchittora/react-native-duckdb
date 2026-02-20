@@ -80,7 +80,7 @@ function findConsumerPackageJson(startDir) {
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { duckdbPath: null, appRoot: null };
+  const opts = { duckdbPath: null, appRoot: null, extensions: null };
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--duckdb-path' && args[i + 1]) {
@@ -89,15 +89,19 @@ function parseArgs() {
     } else if (args[i] === '--app-root' && args[i + 1]) {
       opts.appRoot = args[i + 1];
       i++;
+    } else if (args[i] === '--extensions' && args[i + 1]) {
+      opts.extensions = args[i + 1];
+      i++;
     } else if (args[i] === '--help') {
-      console.log('Usage: configure-extensions.js [--duckdb-path <path>] [--app-root <path>]');
+      console.log('Usage: configure-extensions.js [--duckdb-path <path>] [--app-root <path>] [--extensions <list>]');
       console.log('');
-      console.log('Reads react-native-duckdb.build.extensions from consumer package.json');
-      console.log('and generates duckdb/extension/extension_config_local.cmake.');
+      console.log('Generates duckdb/extension/extension_config_local.cmake.');
       console.log('');
-      console.log('--app-root  Directory to start searching for consumer package.json');
-      console.log('            (defaults to process.cwd())');
-      console.log(`Valid extensions: ${ALL_VALID.join(', ')}`);
+      console.log('--extensions  Comma-separated extension list (overrides package.json)');
+      console.log('              Used by Expo config plugin via gradle.properties / Podfile.properties.json');
+      console.log('--app-root    Directory to start searching for consumer package.json');
+      console.log('              (defaults to process.cwd(), ignored when --extensions is set)');
+      console.log(`\nValid extensions: ${ALL_VALID.join(', ')}`);
       process.exit(0);
     }
   }
@@ -154,15 +158,21 @@ function main() {
     process.exit(1);
   }
 
-  // Find consumer package.json (start from --app-root or cwd)
-  const searchStart = opts.appRoot ? path.resolve(opts.appRoot) : process.cwd();
-  const consumer = findConsumerPackageJson(searchStart);
   let extensions = [];
 
-  if (consumer) {
-    const config = consumer.pkg['react-native-duckdb'];
-    if (config && config.build && Array.isArray(config.build.extensions)) {
-      extensions = config.build.extensions;
+  if (opts.extensions) {
+    // --extensions flag takes priority (set by Expo plugin via gradle.properties / Podfile.properties.json)
+    extensions = opts.extensions.split(',').map((s) => s.trim()).filter(Boolean);
+  } else {
+    // Fall back to consumer package.json discovery (bare workflow)
+    const searchStart = opts.appRoot ? path.resolve(opts.appRoot) : process.cwd();
+    const consumer = findConsumerPackageJson(searchStart);
+
+    if (consumer) {
+      const config = consumer.pkg['react-native-duckdb'];
+      if (config && config.build && Array.isArray(config.build.extensions)) {
+        extensions = config.build.extensions;
+      }
     }
   }
 

@@ -29,6 +29,9 @@ def getExtOrIntegerDefault(name) {
   return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["RNDuckDB_" + name]).toInteger()
 }
 
+// Read extensions from gradle.properties (set by Expo config plugin)
+def duckdbExtensions = project.findProperty('RNDuckDB_extensions') ?: ''
+
 def supportsNamespace() {
   def parsed = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')
   def major = parsed[0].toInteger()
@@ -68,7 +71,8 @@ android {
         arguments "-DANDROID_STL=c++_shared",
           "-DANDROID_TOOLCHAIN=clang",
           "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
-          "-DAPP_ROOT_DIR=${rootProject.projectDir.parentFile.absolutePath}"
+          "-DAPP_ROOT_DIR=${rootProject.projectDir.parentFile.absolutePath}",
+          "-DDUCKDB_EXTENSIONS=${duckdbExtensions}"
         abiFilters (*reactNativeArchitectures())
       }
     }
