@@ -63,14 +63,35 @@ if(EXISTS "${EXT_CONFIG_PATH}")
       message(FATAL_ERROR "react-native-duckdb: Failed to build OpenSSL/curl for httpfs (${ANDROID_ABI})")
     endif()
 
+    # CMake's FindOpenSSL and FindCURL modules don't reliably locate libs during
+    # NDK cross-compilation (sysroot search paths don't include our vendor dir).
+    # Spell out every path so DuckDB's httpfs extension links correctly.
     set(OPENSSL_ROOT_DIR "${VENDOR_DIR}/openssl/android-${ANDROID_ABI}" CACHE PATH "" FORCE)
+    set(OPENSSL_INCLUDE_DIR "${VENDOR_DIR}/openssl/android-${ANDROID_ABI}/include" CACHE PATH "" FORCE)
+    set(OPENSSL_SSL_LIBRARY "${VENDOR_DIR}/openssl/android-${ANDROID_ABI}/lib/libssl.a" CACHE FILEPATH "" FORCE)
+    set(OPENSSL_CRYPTO_LIBRARY "${VENDOR_DIR}/openssl/android-${ANDROID_ABI}/lib/libcrypto.a" CACHE FILEPATH "" FORCE)
     set(OPENSSL_USE_STATIC_LIBS TRUE CACHE BOOL "" FORCE)
     set(CURL_ROOT "${VENDOR_DIR}/curl/android-${ANDROID_ABI}" CACHE PATH "" FORCE)
+    set(CURL_INCLUDE_DIR "${VENDOR_DIR}/curl/android-${ANDROID_ABI}/include" CACHE PATH "" FORCE)
+    set(CURL_LIBRARY "${VENDOR_DIR}/curl/android-${ANDROID_ABI}/lib/libcurl.a" CACHE FILEPATH "" FORCE)
+    set(_HTTPFS_ENABLED TRUE)
+
+    # libcurl depends on system zlib — ensure both DuckDB and our lib can link it.
+    # Set this globally so DuckDB's own shared lib target can also find zlib.
+    find_library(ZLIB_LIB z)
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lz")
   endif()
 endif()
 
-# Build DuckDB from source
-add_subdirectory(${DUCKDB_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/duckdb EXCLUDE_FROM_ALL)
+# Always build DuckDB with Release optimizations (-O3 -DNDEBUG), even for debug
+# app builds. This matches the iOS behavior where DuckDB.xcframework is always
+# pre-built with -DCMAKE_BUILD_TYPE=Release. Without this, AGP maps debug builds
+# to CMAKE_BUILD_TYPE=Debug which compiles DuckDB at -O0 — causing ~30x slowdowns.
+#
+# We use a wrapper subdirectory to scope add_compile_options to DuckDB only.
+# The wrapper's add_compile_options(-O3 -DNDEBUG) applies to DuckDB and its
+# children but NOT to our RNDuckDB target (which is defined in this file).
+add_subdirectory(duckdb-release-wrapper ${CMAKE_CURRENT_BINARY_DIR}/duckdb EXCLUDE_FROM_ALL)
 
 # Our library source files
 file(GLOB_RECURSE cpp_files RELATIVE ${CMAKE_SOURCE_DIR}
@@ -109,6 +130,19 @@ target_link_libraries(
   ReactAndroid::jsi
 )
 link_extension_libraries(${CMAKE_PROJECT_NAME} PRIVATE)
+
+# Link vendor OpenSSL + libcurl static libs into our .so when httpfs is enabled.
+# DuckDB's httpfs extension references OpenSSL/curl symbols but doesn't link them
+# itself — the consuming library (us) must provide them at final link time.
+if(_HTTPFS_ENABLED)
+  find_library(ZLIB_LIB z)
+  target_link_libraries(${CMAKE_PROJECT_NAME}
+    ${OPENSSL_SSL_LIBRARY}
+    ${OPENSSL_CRYPTO_LIBRARY}
+    ${CURL_LIBRARY}
+    ${ZLIB_LIB}
+  )
+endif()
 
 if (REACTNATIVE_MERGED_SO OR ReactAndroid_VERSION_MINOR GREATER_EQUAL 76)
   target_link_libraries(

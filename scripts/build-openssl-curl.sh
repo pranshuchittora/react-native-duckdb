@@ -123,13 +123,29 @@ build_openssl() {
       [ -z "${ANDROID_NDK_ROOT:-}" ] && { echo "ERROR: ANDROID_NDK_ROOT not set"; exit 1; }
       CONFIGURE_TARGET="android-arm64"
       EXTRA_FLAGS=("-D__ANDROID_API__=24")
-      export PATH="${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)/bin:${PATH}"
+      # NDK prebuilts are always under darwin-x86_64 on macOS (even Apple Silicon)
+      local NDK_HOST_TAG
+      NDK_HOST_TAG="$(uname -s | tr '[:upper:]' '[:lower:]')-x86_64"
+      local NDK_TOOLCHAIN="${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/${NDK_HOST_TAG}"
+      export PATH="${NDK_TOOLCHAIN}/bin:${PATH}"
+      # Modern NDKs only ship clang — tell OpenSSL to use it instead of gcc
+      export CC=aarch64-linux-android24-clang
+      export CXX=aarch64-linux-android24-clang++
+      export AR=llvm-ar
+      export RANLIB=llvm-ranlib
       ;;
     android-x86_64)
       [ -z "${ANDROID_NDK_ROOT:-}" ] && { echo "ERROR: ANDROID_NDK_ROOT not set"; exit 1; }
       CONFIGURE_TARGET="android-x86_64"
       EXTRA_FLAGS=("-D__ANDROID_API__=24")
-      export PATH="${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)/bin:${PATH}"
+      local NDK_HOST_TAG
+      NDK_HOST_TAG="$(uname -s | tr '[:upper:]' '[:lower:]')-x86_64"
+      local NDK_TOOLCHAIN="${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/${NDK_HOST_TAG}"
+      export PATH="${NDK_TOOLCHAIN}/bin:${PATH}"
+      export CC=x86_64-linux-android24-clang
+      export CXX=x86_64-linux-android24-clang++
+      export AR=llvm-ar
+      export RANLIB=llvm-ranlib
       ;;
     *)
       echo "ERROR: Unsupported target ${TARGET} for OpenSSL"
@@ -174,16 +190,23 @@ build_curl() {
   extract_source "curl-${CURL_VERSION}.tar.gz" "$BUILD_TMP"
   mkdir -p "$BUILD_BIN"
 
+  # Explicit OpenSSL paths are required for cross-compilation — CMake's
+  # FindOpenSSL won't find our vendor dir in the NDK/iOS sysroot.
+  # CURL_USE_LIBPSL=OFF avoids a missing libpsl dependency on Android.
   local CMAKE_ARGS=(
     -DBUILD_SHARED_LIBS=OFF
     -DBUILD_CURL_EXE=OFF
     -DBUILD_TESTING=OFF
     -DCURL_USE_OPENSSL=ON
     -DOPENSSL_ROOT_DIR="${OPENSSL_OUT}"
+    -DOPENSSL_INCLUDE_DIR="${OPENSSL_OUT}/include"
+    -DOPENSSL_SSL_LIBRARY="${OPENSSL_OUT}/lib/libssl.a"
+    -DOPENSSL_CRYPTO_LIBRARY="${OPENSSL_OUT}/lib/libcrypto.a"
     -DOPENSSL_USE_STATIC_LIBS=TRUE
     -DCURL_DISABLE_LDAP=ON
     -DCURL_DISABLE_LDAPS=ON
     -DHTTP_ONLY=ON
+    -DCURL_USE_LIBPSL=OFF
     -DCMAKE_INSTALL_PREFIX="${CURL_OUT}"
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_C_FLAGS="-fvisibility=hidden"
