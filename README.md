@@ -87,21 +87,9 @@ db.close()
 
 ## Extensions
 
-DuckDB extensions are statically linked at build time. Configure them in your `package.json`:
-
-```json
-{
-  "react-native-duckdb": {
-    "build": {
-      "extensions": ["core_functions", "parquet", "json", "icu"]
-    }
-  }
-}
-```
+DuckDB extensions are statically linked at build time. Configure which extensions to include using your build setup below.
 
 > **We strongly recommend `core_functions`** — without it, common SQL functions like `sum()`, `avg()`, `list_value()`, and `uuid()` won't be available.
-
-After changing extensions, run `pod install` (iOS) and rebuild both platforms.
 
 **Query files directly** (requires the corresponding extension):
 
@@ -114,6 +102,40 @@ const result = db.executeSync("SELECT * FROM read_csv('data.csv')")
 ```
 
 See [docs/API.md](docs/API.md) for the full extension reference, available extensions, SQLite scanner usage, and file query examples.
+
+## Expo Setup
+
+For Expo managed workflow projects using `expo prebuild`:
+
+Add the plugin to your `app.json`:
+
+```json
+["react-native-duckdb", { "extensions": ["core_functions", "parquet"] }]
+```
+
+The `extensions` array is optional — if omitted, no extensions are built (you'll get a warning about missing `core_functions`).
+
+After changing extensions, run `npx expo prebuild --clean` to regenerate native projects.
+
+See [docs/EXPO.md](docs/EXPO.md) for the full Expo guide, migration instructions, and troubleshooting.
+
+## Bare Workflow Setup
+
+For bare React Native projects (without Expo):
+
+Configure extensions in your app's `package.json`:
+
+```json
+{
+  "react-native-duckdb": {
+    "build": {
+      "extensions": ["core_functions", "parquet"]
+    }
+  }
+}
+```
+
+After changing extensions, run `pod install` (iOS) and rebuild both platforms.
 
 ## API Reference
 

@@ -929,3 +929,33 @@ try {
   }
 }
 ```
+
+---
+
+## Expo Config Plugin
+
+For Expo managed workflow projects, react-native-duckdb provides a config plugin that automatically configures extension builds during `expo prebuild`.
+
+### Setup
+
+Add to `app.json`:
+
+```json
+["react-native-duckdb", { "extensions": ["core_functions", "parquet"] }]
+```
+
+### `DuckDBPluginProps`
+
+```ts
+type DuckDBPluginProps = {
+  extensions?: string[];
+};
+```
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `extensions` | `string[]` | `undefined` | Extensions to statically link into the DuckDB binary |
+
+When `extensions` is omitted or empty, the plugin is a no-op — no properties are written to native files.
+
+See [docs/EXPO.md](EXPO.md) for the full Expo guide, internal architecture, migration instructions, and troubleshooting.
