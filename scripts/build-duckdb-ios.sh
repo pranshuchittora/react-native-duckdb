@@ -35,6 +35,14 @@ else
   node "${SCRIPT_DIR}/configure-extensions.js" --duckdb-path "${DUCKDB_DIR}"
 fi
 
+# Check if httpfs is in the generated extension config (needs OpenSSL + libcurl)
+NEEDS_HTTPFS=false
+EXT_CONFIG="${DUCKDB_DIR}/extension/extension_config_local.cmake"
+if [ -f "$EXT_CONFIG" ] && grep -q "httpfs" "$EXT_CONFIG"; then
+  NEEDS_HTTPFS=true
+  echo "--- httpfs detected: will build OpenSSL + libcurl for each target ---"
+fi
+
 # Shared cmake flags
 CMAKE_COMMON=(
   -DBUILD_SHELL=OFF
@@ -42,7 +50,6 @@ CMAKE_COMMON=(
   -DBUILD_BENCHMARKS=OFF
   -DENABLE_SANITIZER=OFF
   -DENABLE_UBSAN=OFF
-  -DBUILD_HTTPFS_EXTENSION=OFF
   -DEXTENSION_STATIC_BUILD=OFF
   -DBUILD_EXTENSIONS_ONLY=OFF
   -DCMAKE_BUILD_TYPE=Release
@@ -57,11 +64,32 @@ build_arch() {
 
   echo "--- Building DuckDB for ${PLATFORM} (${ARCH}) ---"
 
+  # Map platform+arch to vendor directory name for OpenSSL/curl
+  local MAPPED_ARCH=""
+  if [ "$PLATFORM" = "iphoneos" ]; then
+    MAPPED_ARCH="${ARCH}"
+  elif [ "$PLATFORM" = "iphonesimulator" ]; then
+    MAPPED_ARCH="simulator-${ARCH}"
+  fi
+
+  # Build OpenSSL + libcurl if httpfs is enabled
+  local HTTPFS_CMAKE_FLAGS=()
+  if [ "$NEEDS_HTTPFS" = true ]; then
+    echo "   Building OpenSSL + libcurl for ios-${MAPPED_ARCH}..."
+    "${SCRIPT_DIR}/build-openssl-curl.sh" ios "${MAPPED_ARCH}"
+    HTTPFS_CMAKE_FLAGS=(
+      -DOPENSSL_ROOT_DIR="${REPO_DIR}/vendor/openssl/ios-${MAPPED_ARCH}"
+      -DOPENSSL_USE_STATIC_LIBS=TRUE
+      -DCURL_ROOT="${REPO_DIR}/vendor/curl/ios-${MAPPED_ARCH}"
+    )
+  fi
+
   local SDK_PATH
   SDK_PATH="$(xcrun --sdk "${PLATFORM}" --show-sdk-path)"
 
   cmake -S "${DUCKDB_DIR}" -B "${FULL_BUILD_DIR}" -G "Unix Makefiles" \
     "${CMAKE_COMMON[@]}" \
+    "${HTTPFS_CMAKE_FLAGS[@]}" \
     -DCMAKE_SYSTEM_NAME=iOS \
     -DCMAKE_OSX_SYSROOT="${SDK_PATH}" \
     -DCMAKE_OSX_ARCHITECTURES="${ARCH}" \

@@ -72,7 +72,8 @@ android {
           "-DANDROID_TOOLCHAIN=clang",
           "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
           "-DAPP_ROOT_DIR=${rootProject.projectDir.parentFile.absolutePath}",
-          "-DDUCKDB_EXTENSIONS=${duckdbExtensions}"
+          "-DDUCKDB_EXTENSIONS=${duckdbExtensions}",
+          "-DANDROID_NDK_FOR_HTTPFS=${android.ndkDirectory}"
         abiFilters (*reactNativeArchitectures())
       }
     }

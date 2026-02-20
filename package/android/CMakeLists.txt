@@ -38,10 +38,36 @@ set(BUILD_UNITTESTS OFF CACHE BOOL "" FORCE)
 set(BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
 set(ENABLE_SANITIZER OFF CACHE BOOL "" FORCE)
 set(ENABLE_UBSAN OFF CACHE BOOL "" FORCE)
-set(BUILD_HTTPFS_EXTENSION OFF CACHE BOOL "" FORCE)
 set(EXTENSION_STATIC_BUILD OFF CACHE BOOL "" FORCE)
 set(BUILD_EXTENSIONS_ONLY OFF CACHE BOOL "" FORCE)
 set(DUCKDB_EXPLICIT_PLATFORM "android_${ANDROID_ABI}" CACHE STRING "" FORCE)
+
+# Check if httpfs is in the extension config (needs OpenSSL + libcurl)
+set(EXT_CONFIG_PATH "${DUCKDB_SOURCE_DIR}/extension/extension_config_local.cmake")
+if(EXISTS "${EXT_CONFIG_PATH}")
+  file(READ "${EXT_CONFIG_PATH}" _ext_config_content)
+  if(_ext_config_content MATCHES "httpfs")
+    message(STATUS "react-native-duckdb: httpfs detected, building OpenSSL + libcurl for ${ANDROID_ABI}")
+
+    # Pass NDK path from build.gradle so the cross-compilation script can find the toolchain
+    if(ANDROID_NDK_FOR_HTTPFS)
+      set(ENV{ANDROID_NDK_ROOT} "${ANDROID_NDK_FOR_HTTPFS}")
+    endif()
+
+    set(VENDOR_DIR "${CMAKE_SOURCE_DIR}/../../vendor")
+    execute_process(
+      COMMAND bash "${CMAKE_SOURCE_DIR}/../../scripts/build-openssl-curl.sh" android "${ANDROID_ABI}"
+      RESULT_VARIABLE _httpfs_deps_result
+    )
+    if(NOT _httpfs_deps_result EQUAL 0)
+      message(FATAL_ERROR "react-native-duckdb: Failed to build OpenSSL/curl for httpfs (${ANDROID_ABI})")
+    endif()
+
+    set(OPENSSL_ROOT_DIR "${VENDOR_DIR}/openssl/android-${ANDROID_ABI}" CACHE PATH "" FORCE)
+    set(OPENSSL_USE_STATIC_LIBS TRUE CACHE BOOL "" FORCE)
+    set(CURL_ROOT "${VENDOR_DIR}/curl/android-${ANDROID_ABI}" CACHE PATH "" FORCE)
+  endif()
+endif()
 
 # Build DuckDB from source
 add_subdirectory(${DUCKDB_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/duckdb EXCLUDE_FROM_ALL)
