@@ -60,5 +60,16 @@ Pod::Spec.new do |s|
     "nitrogen/generated/ios/c++/**/*.{h,hpp}",
   ]
 
+  # When httpfs extension is included, OpenSSL and libcurl are statically linked
+  # into the xcframework but still need system framework dependencies at link time.
+  ext_meta = File.join(__dir__, ".duckdb-extensions.json")
+  if File.exist?(ext_meta)
+    ext_info = JSON.parse(File.read(ext_meta)) rescue {}
+    if ext_info["httpfs"]
+      s.frameworks = ["Security", "SystemConfiguration"]
+      s.libraries = ["z"]
+    end
+  end
+
   install_modules_dependencies(s)
 end
