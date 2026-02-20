@@ -16,6 +16,9 @@ duckdb/.extensions-configured
 duckdb/extension/extension_config_local.cmake
 package/DuckDB.xcframework/
 
+# Cross-compiled dependencies (OpenSSL, libcurl for httpfs)
+vendor/
+
 # iOS
 example/ios/Podfile.lock
 example/ios/Pods/

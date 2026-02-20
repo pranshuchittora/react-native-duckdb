@@ -22,6 +22,10 @@ const OUT_OF_TREE_EXTENSIONS = {
     git_url: 'https://github.com/duckdb/duckdb-sqlite',
     git_tag: '0c93d610af1e1f66292559fcf0f01a93597a98b6',
   },
+  httpfs: {
+    git_url: 'https://github.com/duckdb/duckdb-httpfs',
+    git_tag: '13f8a814d41a978c3f19eb1dc76069489652ea6f',
+  },
 };
 
 const ALL_VALID = [...IN_TREE_EXTENSIONS, ...Object.keys(OUT_OF_TREE_EXTENSIONS)];
