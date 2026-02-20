@@ -27,7 +27,7 @@ export function TestResultRow({ result }: Props) {
             {isPassing ? '✓' : isFailing ? '✗' : isRunning ? '⟳' : '○'}
           </Text>
         </View>
-        <Text style={styles.name} numberOfLines={1}>
+        <Text style={styles.name} numberOfLines={2}>
           {result.name}
         </Text>
         {result.durationMs !== undefined && (
