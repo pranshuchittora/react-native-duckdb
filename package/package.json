@@ -28,17 +28,21 @@
     "cpp",
     "vendor",
     "scripts",
+    "app.plugin.js",
+    "plugin",
     "RNDuckDB.podspec",
     "!lib/typescript/example",
     "!android/build",
     "!android/.cxx",
     "!ios/build",
+    "!plugin/src",
     "!**/__tests__",
     "!**/__fixtures__",
     "!**/__mocks__"
   ],
   "scripts": {
-    "build": "bun typecheck && bob build",
+    "build": "bun typecheck && bob build && bun run build:plugin",
+    "build:plugin": "tsc --project plugin/tsconfig.json",
     "specs": "bun typecheck && bun nitrogen --logLevel=\"debug\"",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"**/*.{js,ts,tsx}\" --fix",
@@ -63,6 +67,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
+    "@expo/config-plugins": "^9.0.0",
     "jest": "^30.2.0",
     "nitrogen": "0.33.9",
     "react": "19.1.1",
@@ -71,9 +76,15 @@
     "react-native-nitro-modules": "0.33.9"
   },
   "peerDependencies": {
+    "expo": ">=51.0.0",
     "react": ">=17.0.0",
     "react-native": ">=0.76.0",
     "react-native-nitro-modules": ">=0.33.0"
+  },
+  "peerDependenciesMeta": {
+    "expo": {
+      "optional": true
+    }
   },
   "jest": {
     "preset": "react-native",
