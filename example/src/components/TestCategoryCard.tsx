@@ -19,6 +19,7 @@ export function TestCategoryCard({
   isRunning,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
+  const needsNetwork = name === 'Remote Queries'
   const passCount = results.filter((r) => r.status === 'pass').length
   const failCount = results.filter((r) => r.status === 'fail').length
   const total = results.length
@@ -32,6 +33,11 @@ export function TestCategoryCard({
         <View style={styles.header}>
           <Text style={styles.chevron}>{expanded ? '▼' : '▶'}</Text>
           <Text style={styles.categoryName}>{name}</Text>
+          {needsNetwork && (
+            <View style={styles.networkBadge}>
+              <Text style={styles.networkBadgeText}>NET</Text>
+            </View>
+          )}
           {hasResults && (
             <View style={styles.counts}>
               {passCount > 0 && (
@@ -145,6 +151,19 @@ const styles = StyleSheet.create({
   testList: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#e0e0e0',
+  },
+  networkBadge: {
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+    marginRight: 4,
+  },
+  networkBadgeText: {
+    color: '#1565C0',
+    fontSize: 10,
+    fontWeight: '600',
   },
   noResults: {
     padding: 14,

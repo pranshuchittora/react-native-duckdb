@@ -13,6 +13,7 @@ High-performance DuckDB bindings for React Native, powered by [Nitro Modules](ht
 - **Multi-connection** — Independent connections to the same database
 - **Batch execution** — Execute multiple commands atomically
 - **Full type support** — All DuckDB types including HUGEINT, DECIMAL, TIMESTAMP, ARRAY, MAP, STRUCT, UUID
+- **Remote data** — Query Parquet, CSV, and JSON files over HTTPS via the httpfs extension
 
 ## Installation
 

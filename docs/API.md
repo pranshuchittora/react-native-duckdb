@@ -78,6 +78,7 @@ Configure extensions in your app's `package.json`:
 | `json` | JSON file format support | `read_json('file.json')` |
 | `icu` | Unicode collation and text functions | Locale-aware sorting and string operations |
 | `sqlite_scanner` | Read and write SQLite databases | `ATTACH 'file.sqlite' (TYPE sqlite)` |
+| `httpfs` | Remote file access over HTTPS | `SELECT * FROM 'https://url/data.parquet'` |
 | `autocomplete` | SQL autocomplete suggestions | Editor integrations |
 | `tpch` | TPC-H benchmark data generator | Benchmarking |
 | `tpcds` | TPC-DS benchmark data generator | Benchmarking |
@@ -126,6 +127,71 @@ SELECT * FROM mydb.users WHERE active = 1;
 -- Detach when done
 DETACH mydb;
 ```
+
+### Remote Queries (httpfs)
+
+The `httpfs` extension enables querying remote files over HTTPS — Parquet, CSV, and JSON files hosted anywhere on the web.
+
+**Enable httpfs:**
+
+Add `"httpfs"` to your extensions list:
+
+```json
+{
+  "react-native-duckdb": {
+    "build": {
+      "extensions": ["core_functions", "parquet", "json", "httpfs"]
+    }
+  }
+}
+```
+
+For Expo, add it to the plugin props in `app.json`:
+
+```json
+["react-native-duckdb", { "extensions": ["core_functions", "parquet", "json", "httpfs"] }]
+```
+
+**Usage:**
+
+```sql
+-- Remote Parquet (direct URL)
+SELECT * FROM 'https://example.com/data.parquet';
+
+-- Remote CSV
+SELECT * FROM read_csv('https://example.com/data.csv');
+
+-- Remote JSON
+SELECT * FROM read_json('https://example.com/data.json');
+```
+
+**httpfs Configuration (via SQL SET statements):**
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `http_timeout` | `30` | Connection timeout in seconds |
+| `http_retries` | `3` | Number of retry attempts |
+| `http_retry_wait_ms` | `100` | Wait between retries in milliseconds |
+| `http_retry_backoff` | `4.0` | Exponential backoff multiplier |
+| `http_keep_alive` | `true` | Reuse connections |
+| `enable_server_cert_verification` | `true` | TLS certificate verification |
+| `ca_cert_file` | (none) | Custom CA certificate file path |
+
+```sql
+SET http_timeout = 30;
+SET http_retries = 3;
+SET http_retry_wait_ms = 100;
+SET http_retry_backoff = 4.0;
+SET http_keep_alive = true;
+```
+
+**iOS App Transport Security (ATS):** HTTPS URLs satisfy ATS requirements by default. For HTTP (non-secure) URLs, an ATS exception would need to be added to `Info.plist` (not recommended for production).
+
+**Certificate validation:** The standard OS certificate store is used for TLS validation. Custom certificate pinning is not built-in but could be configured via `SET ca_cert_file` if needed.
+
+**Proxy support:** DuckDB httpfs accepts `SET http_proxy` for proxy configuration. Behavior may vary by platform — test in your environment.
+
+**Binary size impact:** httpfs adds OpenSSL + libcurl (~2-4MB per platform) to your app binary.
 
 ### Runtime Extension Loading
 
