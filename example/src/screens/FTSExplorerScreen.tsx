@@ -7,6 +7,8 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
+  Platform,
+  Linking,
 } from 'react-native'
 import { HybridDuckDB } from 'react-native-duckdb'
 
@@ -176,6 +178,7 @@ export function FTSExplorerScreen({ onBack }: Props) {
   }, [])
 
   if (error) {
+    const isRowidBug = error.includes('Information loss on integer cast')
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.headerBar}>
@@ -186,7 +189,35 @@ export function FTSExplorerScreen({ onBack }: Props) {
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Error: {error}</Text>
+          {isRowidBug ? (
+            <>
+              <Text style={styles.errorEmoji}>🐛</Text>
+              <Text style={styles.errorTitle}>
+                FTS Unavailable on Android
+              </Text>
+              <Text style={styles.errorDesc}>
+                DuckDB's FTS extension has a known bug where internal rowid
+                values overflow on Android, preventing index creation.
+              </Text>
+              <Text style={styles.errorDesc}>
+                The stem() function and FTS on iOS work correctly. This is an
+                upstream issue being tracked.
+              </Text>
+              <TouchableOpacity
+                onPress={() =>
+                  Linking.openURL(
+                    'https://github.com/duckdb/duckdb-fts/issues/24'
+                  )
+                }
+                style={styles.issueLink}>
+                <Text style={styles.issueLinkText}>
+                  duckdb/duckdb-fts#24
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <Text style={styles.errorText}>Error: {error}</Text>
+          )}
         </View>
       </SafeAreaView>
     )
@@ -388,7 +419,37 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 32,
+  },
+  errorEmoji: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#212121',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  errorDesc: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  issueLink: {
+    marginTop: 12,
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  issueLinkText: {
+    fontSize: 14,
+    color: '#E65100',
+    fontWeight: '600',
   },
   errorText: {
     fontSize: 14,

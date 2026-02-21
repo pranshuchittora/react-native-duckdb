@@ -43,7 +43,7 @@ export function TestCategoryCard({
           <View style={styles.headerContent}>
             <View style={styles.titleRow}>
               <Text style={styles.chevron}>{expanded ? '▼' : '▶'}</Text>
-              <Text style={styles.categoryName} numberOfLines={1}>{name}</Text>
+              <Text style={styles.categoryName} numberOfLines={2}>{name}</Text>
               {badge && (
                 <View style={[styles.badge, { backgroundColor: badge.bgColor }]}>
                   <Text style={[styles.badgeText, { color: badge.textColor }]}>{badge.text}</Text>
