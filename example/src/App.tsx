@@ -15,6 +15,7 @@ import './tests/namedparams.test'
 import './tests/profiling.test'
 import './tests/progress.test'
 import './tests/remote.test'
+import './tests/fts.test'
 import './tests/benchmark.test'
 import { TestSuiteScreen } from './screens/TestSuiteScreen'
 
