@@ -31,6 +31,10 @@ const OUT_OF_TREE_EXTENSIONS = {
     git_tag: '39376623630a968154bef4e6930d12ad0b59d7fb',
     include_dir: 'extension/fts/include',
   },
+  vss: {
+    git_url: 'https://github.com/duckdb/duckdb-vss',
+    git_tag: '4d07d6e3f6ce87013ae59a24b8d8c6740f2db307',
+  },
 };
 
 const ALL_VALID = [...IN_TREE_EXTENSIONS, ...Object.keys(OUT_OF_TREE_EXTENSIONS)];
