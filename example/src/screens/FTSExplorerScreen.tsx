@@ -32,6 +32,7 @@ export function FTSExplorerScreen() {
   const [isReady, setIsReady] = useState(false)
   const [isInitializing, setIsInitializing] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isSearching, setIsSearching] = useState(false)
   const [executionTimeMs, setExecutionTimeMs] = useState<number | undefined>()
   const [showSetupSql, setShowSetupSql] = useState(false)
   const [showQuerySql, setShowQuerySql] = useState(false)
@@ -107,16 +108,17 @@ ORDER BY score DESC`
   )
 
   const executeSearch = useCallback(
-    (query: string, mode: SearchMode) => {
+    async (query: string, mode: SearchMode) => {
       const db = dbRef.current
       if (!db) return
 
+      setIsSearching(true)
       try {
         if (!query.trim()) {
           const sql = 'SELECT id, title, description, author, language FROM books ORDER BY id'
           setLastSql(sql)
           const start = Date.now()
-          const all = db.executeSync(sql)
+          const all = await db.execute(sql)
           setExecutionTimeMs(Date.now() - start)
           const records = all.toRows()
           const cols = all.columnNames
@@ -128,7 +130,7 @@ ORDER BY score DESC`
         const sql = buildSearchSql(query, mode)
         setLastSql(sql)
         const start = Date.now()
-        const result = db.executeSync(sql)
+        const result = await db.execute(sql)
         setExecutionTimeMs(Date.now() - start)
         const records = result.toRows()
         const cols = result.columnNames
@@ -137,6 +139,8 @@ ORDER BY score DESC`
       } catch (_) {
         setColumns([])
         setRows([])
+      } finally {
+        setIsSearching(false)
       }
     },
     [buildSearchSql]
@@ -302,11 +306,17 @@ ORDER BY score DESC`
         </View>
 
         <TouchableOpacity
-          style={[styles.searchButton, { backgroundColor: ACCENT }]}
+          style={[styles.searchButton, { backgroundColor: ACCENT, opacity: isSearching ? 0.6 : 1 }]}
           onPress={() => executeSearch(searchQuery, searchMode)}
-          disabled={!isReady}>
-          <MaterialCommunityIcons name="magnify" size={18} color="#fff" />
-          <Text style={styles.searchButtonText}>Search</Text>
+          disabled={!isReady || isSearching}>
+          {isSearching ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <MaterialCommunityIcons name="magnify" size={18} color="#fff" />
+              <Text style={styles.searchButtonText}>Search</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
 

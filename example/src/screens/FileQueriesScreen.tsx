@@ -163,7 +163,7 @@ export function FileQueriesScreen() {
     [activeSchema, ensureBooksTable]
   )
 
-  const runQuery = useCallback(() => {
+  const runQuery = useCallback(async () => {
     const db = dbRef.current
     if (!db || !query.trim()) return
 
@@ -172,7 +172,7 @@ export function FileQueriesScreen() {
     try {
       ensureBooksTable(db)
       const start = Date.now()
-      const result = db.executeSync(query)
+      const result = await db.execute(query)
       setExecutionTimeMs(Date.now() - start)
       const records = result.toRows()
       const cols = result.columnNames
@@ -280,15 +280,17 @@ export function FileQueriesScreen() {
           </View>
         )}
         <TouchableOpacity
-          style={[styles.runButton, { backgroundColor: ACCENT, opacity: isLoading || !query.trim() ? 0.5 : 1 }]}
+          style={[styles.runButton, { backgroundColor: ACCENT, opacity: isLoading || !query.trim() ? 0.6 : 1 }]}
           onPress={runQuery}
           disabled={isLoading || !query.trim()}>
           {isLoading ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <MaterialCommunityIcons name="play" size={18} color="#fff" />
+            <>
+              <MaterialCommunityIcons name="play" size={18} color="#fff" />
+              <Text style={styles.runButtonText}>Run Query</Text>
+            </>
           )}
-          <Text style={styles.runButtonText}>Run Query</Text>
         </TouchableOpacity>
       </View>
 

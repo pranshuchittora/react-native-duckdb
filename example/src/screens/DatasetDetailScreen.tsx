@@ -94,7 +94,7 @@ export function DatasetDetailScreen() {
     }
   }, [dataset.parquetPath, getDb])
 
-  const executeQuery = useCallback((sql: string) => {
+  const executeQuery = useCallback(async (sql: string) => {
     setExecuting(true)
     setQueryError(undefined)
     setOverflowed(false)
@@ -103,7 +103,7 @@ export function DatasetDetailScreen() {
       const db = getDb()
       const limitedSql = ensureLimit(sql)
       const start = Date.now()
-      const result = db.executeSync(limitedSql)
+      const result = await db.execute(limitedSql)
       const elapsed = Date.now() - start
 
       const cols = result.columnNames
@@ -149,10 +149,10 @@ export function DatasetDetailScreen() {
     setOverflowed(false)
   }, [dataset])
 
-  const handleExecute = useCallback(() => {
+  const handleExecute = useCallback(async () => {
     if (currentQuery.trim()) {
       setActiveChip(null)
-      executeQuery(currentQuery)
+      await executeQuery(currentQuery)
     }
   }, [currentQuery, executeQuery])
 

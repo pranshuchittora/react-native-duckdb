@@ -95,6 +95,7 @@ export function VSSExplorerScreen() {
   const [rows, setRows] = useState<any[][]>([])
   const [distances, setDistances] = useState<number[]>([])
   const [executionTimeMs, setExecutionTimeMs] = useState<number | undefined>()
+  const [isSearching, setIsSearching] = useState(false)
   const [lastSql, setLastSql] = useState('')
   const [showSetupSql, setShowSetupSql] = useState(false)
   const [showQuerySql, setShowQuerySql] = useState(false)
@@ -165,7 +166,7 @@ CREATE INDEX idx_ip ON embeddings USING HNSW (vec) WITH (metric = 'ip');`
   }, [])
 
   const runQuery = useCallback(
-    (db: ReturnType<typeof HybridDuckDB.open>, cluster: string, m: DistanceMetric, k: number) => {
+    async (db: ReturnType<typeof HybridDuckDB.open>, cluster: string, m: DistanceMetric, k: number) => {
       const queryVec = buildQueryVector(cluster)
       if (!queryVec.length || !db) return
 
@@ -177,10 +178,11 @@ ORDER BY distance
 LIMIT ${k}`
 
       setLastSql(sql)
+      setIsSearching(true)
 
       try {
         const start = Date.now()
-        const result = db.executeSync(sql)
+        const result = await db.execute(sql)
         setExecutionTimeMs(Date.now() - start)
         const records = result.toRows()
         const cols = result.columnNames
@@ -189,27 +191,29 @@ LIMIT ${k}`
         setDistances(records.map((r: any) => Number(r.distance)))
       } catch (e: any) {
         setError(String(e.message || e))
+      } finally {
+        setIsSearching(false)
       }
     },
     [buildQueryVector]
   )
 
-  const onSearch = useCallback(() => {
-    if (dbRef.current) runQuery(dbRef.current, activeCluster, metric, topK)
+  const onSearch = useCallback(async () => {
+    if (dbRef.current) await runQuery(dbRef.current, activeCluster, metric, topK)
   }, [runQuery, activeCluster, metric, topK])
 
   const onClusterChange = useCallback(
-    (cluster: string) => {
+    async (cluster: string) => {
       setActiveCluster(cluster)
-      if (dbRef.current) runQuery(dbRef.current, cluster, metric, topK)
+      if (dbRef.current) await runQuery(dbRef.current, cluster, metric, topK)
     },
     [runQuery, metric, topK]
   )
 
   const onMetricChange = useCallback(
-    (m: DistanceMetric) => {
+    async (m: DistanceMetric) => {
       setMetric(m)
-      if (dbRef.current) runQuery(dbRef.current, activeCluster, m, topK)
+      if (dbRef.current) await runQuery(dbRef.current, activeCluster, m, topK)
     },
     [runQuery, activeCluster, topK]
   )
@@ -383,9 +387,9 @@ LIMIT ${k}`
                   borderColor: topK === k ? ACCENT : colors.border,
                 },
               ]}
-              onPress={() => {
+              onPress={async () => {
                 setTopK(k)
-                if (dbRef.current) runQuery(dbRef.current, activeCluster, metric, k)
+                if (dbRef.current) await runQuery(dbRef.current, activeCluster, metric, k)
               }}>
               <Text
                 style={[
@@ -399,11 +403,17 @@ LIMIT ${k}`
         </View>
 
         <TouchableOpacity
-          style={[styles.searchButton, { backgroundColor: ACCENT }]}
+          style={[styles.searchButton, { backgroundColor: ACCENT, opacity: isSearching ? 0.6 : 1 }]}
           onPress={onSearch}
-          disabled={!isReady}>
-          <MaterialCommunityIcons name="vector-point" size={18} color="#fff" />
-          <Text style={styles.searchButtonText}>Search</Text>
+          disabled={!isReady || isSearching}>
+          {isSearching ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <MaterialCommunityIcons name="vector-point" size={18} color="#fff" />
+              <Text style={styles.searchButtonText}>Search</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
 

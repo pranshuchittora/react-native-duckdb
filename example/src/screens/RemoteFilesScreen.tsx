@@ -105,7 +105,7 @@ export function RemoteFilesScreen() {
     []
   )
 
-  const describeSchema = useCallback(() => {
+  const describeSchema = useCallback(async () => {
     const db = dbRef.current
     if (!db || !url.trim()) return
 
@@ -114,7 +114,7 @@ export function RemoteFilesScreen() {
     try {
       const fn = READER_FN[fileType]
       const sql = `DESCRIBE SELECT * FROM ${fn}('${url}');`
-      const result = db.executeSync(sql)
+      const result = await db.execute(sql)
       const records = result.toRows()
       const cols = result.columnNames
       setSchemaColumns(cols)
@@ -134,7 +134,7 @@ export function RemoteFilesScreen() {
     }
   }, [url, fileType])
 
-  const runQuery = useCallback(() => {
+  const runQuery = useCallback(async () => {
     const db = dbRef.current
     if (!db || !query.trim()) return
 
@@ -142,7 +142,7 @@ export function RemoteFilesScreen() {
     setError(null)
     try {
       const start = Date.now()
-      const result = db.executeSync(query)
+      const result = await db.execute(query)
       setExecutionTimeMs(Date.now() - start)
       const records = result.toRows()
       const cols = result.columnNames
@@ -302,15 +302,17 @@ export function RemoteFilesScreen() {
           </View>
         )}
         <TouchableOpacity
-          style={[styles.runButton, { backgroundColor: ACCENT, opacity: isLoading || !query.trim() ? 0.5 : 1 }]}
+          style={[styles.runButton, { backgroundColor: ACCENT, opacity: isLoading || !query.trim() ? 0.6 : 1 }]}
           onPress={runQuery}
           disabled={isLoading || !query.trim()}>
           {isLoading ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <MaterialCommunityIcons name="play" size={18} color="#fff" />
+            <>
+              <MaterialCommunityIcons name="play" size={18} color="#fff" />
+              <Text style={styles.runButtonText}>Run Query</Text>
+            </>
           )}
-          <Text style={styles.runButtonText}>Run Query</Text>
         </TouchableOpacity>
       </View>
 

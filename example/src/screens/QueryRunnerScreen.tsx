@@ -9,6 +9,7 @@ import {
   Keyboard,
   StyleSheet,
   Platform,
+  ActivityIndicator,
 } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { HybridDuckDB } from 'react-native-duckdb'
@@ -98,7 +99,7 @@ export function QueryRunnerScreen({ navigation, route }: Props) {
     } catch {}
   }, [])
 
-  const executeQuery = useCallback(() => {
+  const executeQuery = useCallback(async () => {
     if (!dbRef.current || !sql.trim()) return
     Keyboard.dismiss()
     setExecuting(true)
@@ -108,10 +109,10 @@ export function QueryRunnerScreen({ navigation, route }: Props) {
     const start = Date.now()
     try {
       const statements = sql.split(';').filter(s => s.trim())
-      let lastResult: ReturnType<typeof dbRef.current.executeSync> | null = null
+      let lastResult: Awaited<ReturnType<typeof dbRef.current.execute>> | null = null
 
       for (const stmt of statements) {
-        lastResult = dbRef.current!.executeSync(stmt.trim())
+        lastResult = await dbRef.current!.execute(stmt.trim())
       }
 
       const elapsed = Date.now() - start
@@ -246,11 +247,17 @@ export function QueryRunnerScreen({ navigation, route }: Props) {
               <MaterialCommunityIcons name="bookmark-plus-outline" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.runButton, { backgroundColor: brand.yellow }]}
+              style={[styles.runButton, { backgroundColor: brand.yellow, opacity: executing ? 0.6 : 1 }]}
               onPress={executeQuery}
               disabled={executing || !sql.trim()}>
-              <MaterialCommunityIcons name="play" size={18} color="#000" />
-              <Text style={styles.runText}>Run</Text>
+              {executing ? (
+                <ActivityIndicator size="small" color="#000" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="play" size={18} color="#000" />
+                  <Text style={styles.runText}>Run</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         </View>
