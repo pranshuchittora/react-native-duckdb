@@ -4,14 +4,17 @@ import { TestRegistry } from '../testing/TestRegistry'
 import { TestRunner } from '../testing/TestRunner'
 import type { TestResult } from '../testing/types'
 import { TestCategoryCard } from '../components/TestCategoryCard'
+import { FTSExplorerScreen } from './FTSExplorerScreen'
 
 const BENCHMARK_CATEGORY = 'Benchmarks'
+const FTS_CATEGORY = 'Full-Text Search (fts)'
 
 export function TestSuiteScreen() {
   const [results, setResults] = useState<Map<string, TestResult[]>>(new Map())
   const [runningCategories, setRunningCategories] = useState<Set<string>>(new Set())
   const [isRunningAll, setIsRunningAll] = useState(false)
   const [includeBenchmarks, setIncludeBenchmarks] = useState(false)
+  const [showExplorer, setShowExplorer] = useState(false)
 
   const categories = useMemo(() => TestRegistry.getCategories(), [])
 
@@ -76,6 +79,10 @@ export function TestSuiteScreen() {
 
   const hasResults = totalPass > 0 || totalFail > 0
 
+  if (showExplorer) {
+    return <FTSExplorerScreen onBack={() => setShowExplorer(false)} />
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -119,6 +126,7 @@ export function TestSuiteScreen() {
             totalDurationMs={getCategoryDuration(category)}
             onRunCategory={() => runCategory(category)}
             isRunning={runningCategories.has(category) || isRunningAll}
+            onExplore={category === FTS_CATEGORY ? () => setShowExplorer(true) : undefined}
           />
         ))}
         {categories.length === 0 && (

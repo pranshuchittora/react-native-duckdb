@@ -43,7 +43,7 @@ TestRegistry.registerTest('Extensions', 'LOAD: statically linked extensions load
   }
 })
 
-TestRegistry.registerTest('Extensions', 'SQLite scanner: ATTACH and query SQLite database', async () => {
+TestRegistry.registerTest('SQLite Scanner (sqlite_scanner)', 'SQLite scanner: ATTACH and query SQLite database', async () => {
   // Unique filenames per run so tests always start fresh — deleteDatabase
   // only removes .db files, not the .sqlite artifact created by the test.
   const suffix = Date.now()

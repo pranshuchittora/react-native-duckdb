@@ -13,7 +13,7 @@ function getDbDir(db: ReturnType<typeof HybridDuckDB.open>): string {
   return dbPath.substring(0, dbPath.lastIndexOf('/'))
 }
 
-TestRegistry.registerTest('File Queries', 'Parquet: write and read via file path', async () => {
+TestRegistry.registerTest('File Queries (parquet)', 'Parquet: write and read via file path', async () => {
   const suffix = Date.now()
   const dbName = `test_filequery_${suffix}.db`
   const db = HybridDuckDB.open(dbName, {})
@@ -46,7 +46,7 @@ TestRegistry.registerTest('File Queries', 'Parquet: write and read via file path
   }
 })
 
-TestRegistry.registerTest('File Queries', 'CSV: write and read via read_csv', async () => {
+TestRegistry.registerTest('File Queries (parquet)', 'CSV: write and read via read_csv', async () => {
   // CSV reading is BUILT-IN — no extension needed
   const suffix = Date.now()
   const dbName = `test_csv_fq_${suffix}.db`
@@ -79,7 +79,7 @@ TestRegistry.registerTest('File Queries', 'CSV: write and read via read_csv', as
   }
 })
 
-TestRegistry.registerTest('File Queries', 'JSON: write and read via read_json', async () => {
+TestRegistry.registerTest('File Queries (parquet)', 'JSON: write and read via read_json', async () => {
   // JSON reading requires the `json` extension
   const suffix = Date.now()
   const dbName = `test_json_fq_${suffix}.db`
@@ -112,7 +112,7 @@ TestRegistry.registerTest('File Queries', 'JSON: write and read via read_json', 
   }
 })
 
-TestRegistry.registerTest('File Queries', 'Parquet: query with aggregation', async () => {
+TestRegistry.registerTest('File Queries (parquet)', 'Parquet: query with aggregation', async () => {
   const suffix = Date.now()
   const dbName = `test_parquet_agg_${suffix}.db`
   const db = HybridDuckDB.open(dbName, {})
@@ -144,7 +144,7 @@ TestRegistry.registerTest('File Queries', 'Parquet: query with aggregation', asy
   }
 })
 
-TestRegistry.registerTest('File Queries', 'CSV: read with custom options', async () => {
+TestRegistry.registerTest('File Queries (parquet)', 'CSV: read with custom options', async () => {
   const suffix = Date.now()
   const dbName = `test_csv_custom_${suffix}.db`
   const db = HybridDuckDB.open(dbName, {})

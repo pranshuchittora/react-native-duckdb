@@ -3,12 +3,20 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import type { TestResult } from '../testing/types'
 import { TestResultRow } from './TestResultRow'
 
+const CATEGORY_BADGES: Record<string, { text: string; bgColor: string; textColor: string }> = {
+  'Remote Queries': { text: 'NET', bgColor: '#E3F2FD', textColor: '#1565C0' },
+  'Full-Text Search (fts)': { text: 'FTS', bgColor: '#FFF3E0', textColor: '#E65100' },
+  'File Queries (parquet)': { text: 'FILE', bgColor: '#E8F5E9', textColor: '#2E7D32' },
+  'SQLite Scanner (sqlite_scanner)': { text: 'EXT', bgColor: '#F3E5F5', textColor: '#7B1FA2' },
+}
+
 interface Props {
   name: string
   results: TestResult[]
   totalDurationMs?: number
   onRunCategory: () => void
   isRunning: boolean
+  onExplore?: () => void
 }
 
 export function TestCategoryCard({
@@ -17,9 +25,10 @@ export function TestCategoryCard({
   totalDurationMs,
   onRunCategory,
   isRunning,
+  onExplore,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const needsNetwork = name === 'Remote Queries'
+  const badge = CATEGORY_BADGES[name]
   const passCount = results.filter((r) => r.status === 'pass').length
   const failCount = results.filter((r) => r.status === 'fail').length
   const total = results.length
@@ -33,9 +42,9 @@ export function TestCategoryCard({
         <View style={styles.header}>
           <Text style={styles.chevron}>{expanded ? '▼' : '▶'}</Text>
           <Text style={styles.categoryName}>{name}</Text>
-          {needsNetwork && (
-            <View style={styles.networkBadge}>
-              <Text style={styles.networkBadgeText}>NET</Text>
+          {badge && (
+            <View style={[styles.badge, { backgroundColor: badge.bgColor }]}>
+              <Text style={[styles.badgeText, { color: badge.textColor }]}>{badge.text}</Text>
             </View>
           )}
           {hasResults && (
@@ -51,6 +60,13 @@ export function TestCategoryCard({
           )}
           {totalDurationMs !== undefined && (
             <Text style={styles.duration}>{totalDurationMs}ms</Text>
+          )}
+          {onExplore && (
+            <TouchableOpacity
+              onPress={onExplore}
+              style={styles.exploreButton}>
+              <Text style={styles.exploreButtonText}>Explore</Text>
+            </TouchableOpacity>
           )}
           <TouchableOpacity
             onPress={onRunCategory}
@@ -148,20 +164,30 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  exploreButton: {
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  exploreButtonText: {
+    color: '#E65100',
+    fontSize: 13,
+    fontWeight: '600',
+  },
   testList: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#e0e0e0',
   },
-  networkBadge: {
-    backgroundColor: '#E3F2FD',
+  badge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     marginLeft: 8,
     marginRight: 4,
   },
-  networkBadgeText: {
-    color: '#1565C0',
+  badgeText: {
     fontSize: 10,
     fontWeight: '600',
   },
