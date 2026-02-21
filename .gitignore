@@ -23,6 +23,7 @@ vendor/
 example/ios/Podfile.lock
 example/ios/Pods/
 example/ios/build/
+example/ios/.xcode.env.local
 DerivedData/
 
 # Android

@@ -35,6 +35,7 @@
     "!lib/typescript/example",
     "!android/build",
     "!android/.cxx",
+    "!android/.gradle",
     "!ios/build",
     "!plugin/src",
     "!**/__tests__",
