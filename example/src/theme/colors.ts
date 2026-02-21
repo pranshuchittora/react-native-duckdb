@@ -15,7 +15,7 @@ export const light = {
   border: '#D0D7DE',
   error: '#CF222E',
   tabBarBackground: '#F6F8FA',
-  tabBarActiveTint: brand.yellow,
+  tabBarActiveTint: '#B8A600',
   tabBarInactiveTint: '#656D76',
 }
 

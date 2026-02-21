@@ -81,9 +81,9 @@ export function TestCategoryCard({
             )}
             <TouchableOpacity
               onPress={onRunCategory}
-              style={[styles.runButton, { backgroundColor: brand.blue }, isRunning && styles.runButtonDisabled]}
+              style={[styles.runButton, { backgroundColor: brand.yellow }, isRunning && styles.runButtonDisabled]}
               disabled={isRunning}>
-              <Text style={styles.runButtonText}>
+              <Text style={[styles.runButtonText, { color: '#1F2328' }]}>
                 {isRunning ? '...' : 'Run'}
               </Text>
             </TouchableOpacity>

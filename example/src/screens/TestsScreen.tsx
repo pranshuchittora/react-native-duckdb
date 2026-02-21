@@ -85,9 +85,9 @@ export function TestsScreen() {
           <Text style={[styles.title, { color: colors.text }]}>Test Suite</Text>
           <TouchableOpacity
             onPress={runAll}
-            style={[styles.runAllButton, { backgroundColor: brand.green }, isRunningAll && styles.runAllDisabled]}
+            style={[styles.runAllButton, { backgroundColor: brand.yellow }, isRunningAll && styles.runAllDisabled]}
             disabled={isRunningAll}>
-            <Text style={styles.runAllText}>
+            <Text style={[styles.runAllText, { color: '#1F2328' }]}>
               {isRunningAll ? 'Running...' : 'Run All'}
             </Text>
           </TouchableOpacity>
@@ -97,7 +97,7 @@ export function TestsScreen() {
             <Switch
               value={includeBenchmarks}
               onValueChange={setIncludeBenchmarks}
-              trackColor={{ false: colors.border, true: brand.green }}
+              trackColor={{ false: colors.border, true: brand.yellow }}
               thumbColor="#fff"
               style={styles.switch}
             />
