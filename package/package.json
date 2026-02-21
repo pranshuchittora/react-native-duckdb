@@ -58,13 +58,27 @@
     "analytics",
     "database",
     "ios",
-    "android"
+    "android",
+    "olap",
+    "sql",
+    "parquet",
+    "vector-search",
+    "full-text-search",
+    "embedded-database"
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pranshu/react-native-duckdb.git"
+    "url": "git+https://github.com/pranshuchittora/react-native-duckdb.git"
   },
+  "homepage": "https://github.com/pranshuchittora/react-native-duckdb",
+  "bugs": {
+    "url": "https://github.com/pranshuchittora/react-native-duckdb/issues"
+  },
+  "author": "Pranshu Chittora",
   "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
