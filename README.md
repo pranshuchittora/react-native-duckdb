@@ -179,4 +179,4 @@ MIT
 
 ---
 
-<sub>Inspired by [react-native-nitro-sqlite](https://github.com/margelo/react-native-nitro-sqlite) and [op-sqlite](https://github.com/OP-Engineering/op-sqlite). Built with [DuckDB](https://duckdb.org) and [Nitro Modules](https://nitro.margelo.com). This project was built with AI (Claude) via the [Get Shit Done](https://github.com/pranshuchittora/get-shit-done) framework — every architectural decision was human-made. See [RELEASE.md](RELEASE.md) for release security details.</sub>
+<sub>Inspired by [react-native-nitro-sqlite](https://github.com/margelo/react-native-nitro-sqlite) and [op-sqlite](https://github.com/OP-Engineering/op-sqlite). Built with [DuckDB](https://duckdb.org) and [Nitro Modules](https://nitro.margelo.com). This project was built with AI (Claude) via the [Get Shit Done](https://github.com/gsd-build/get-shit-done) framework — every architectural decision was human-made. See [RELEASE.md](RELEASE.md) for release security details.</sub>
