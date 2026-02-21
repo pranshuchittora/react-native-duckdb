@@ -5,6 +5,10 @@ import { useTheme } from '../theme'
 import { ExplorerHomeScreen } from '../screens/ExplorerHomeScreen'
 import { FTSExplorerScreen } from '../screens/FTSExplorerScreen'
 import { VSSExplorerScreen } from '../screens/VSSExplorerScreen'
+import { StreamingDemoScreen } from '../screens/StreamingDemoScreen'
+import { AppenderBenchmarkScreen } from '../screens/AppenderBenchmarkScreen'
+import { TypeInspectorScreen } from '../screens/TypeInspectorScreen'
+import { AttachDatabaseScreen } from '../screens/AttachDatabaseScreen'
 import type { ExplorerStackParamList } from './types'
 
 const Stack = createNativeStackNavigator<ExplorerStackParamList>()
@@ -57,22 +61,22 @@ export function ExplorerStack() {
       />
       <Stack.Screen
         name="StreamingDemo"
-        component={PlaceholderFeature}
+        component={StreamingDemoScreen}
         options={{ title: 'Streaming Demo' }}
       />
       <Stack.Screen
         name="AppenderBenchmark"
-        component={PlaceholderFeature}
+        component={AppenderBenchmarkScreen}
         options={{ title: 'Appender Benchmark' }}
       />
       <Stack.Screen
         name="TypeInspector"
-        component={PlaceholderFeature}
+        component={TypeInspectorScreen}
         options={{ title: 'Type Inspector' }}
       />
       <Stack.Screen
         name="AttachDatabase"
-        component={PlaceholderFeature}
+        component={AttachDatabaseScreen}
         options={{ title: 'Attach Database' }}
       />
     </Stack.Navigator>
