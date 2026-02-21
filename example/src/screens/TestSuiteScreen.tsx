@@ -5,9 +5,11 @@ import { TestRunner } from '../testing/TestRunner'
 import type { TestResult } from '../testing/types'
 import { TestCategoryCard } from '../components/TestCategoryCard'
 import { FTSExplorerScreen } from './FTSExplorerScreen'
+import { VSSExplorerScreen } from './VSSExplorerScreen'
 
 const BENCHMARK_CATEGORY = 'Benchmarks'
 const FTS_CATEGORY = 'Full-Text Search (fts)'
+const HNSW_CATEGORY = 'HNSW Index (vss)'
 
 export function TestSuiteScreen() {
   const [results, setResults] = useState<Map<string, TestResult[]>>(new Map())
@@ -15,6 +17,7 @@ export function TestSuiteScreen() {
   const [isRunningAll, setIsRunningAll] = useState(false)
   const [includeBenchmarks, setIncludeBenchmarks] = useState(false)
   const [showExplorer, setShowExplorer] = useState(false)
+  const [showVSSExplorer, setShowVSSExplorer] = useState(false)
 
   const categories = useMemo(() => TestRegistry.getCategories(), [])
 
@@ -83,6 +86,10 @@ export function TestSuiteScreen() {
     return <FTSExplorerScreen onBack={() => setShowExplorer(false)} />
   }
 
+  if (showVSSExplorer) {
+    return <VSSExplorerScreen onBack={() => setShowVSSExplorer(false)} />
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -126,7 +133,7 @@ export function TestSuiteScreen() {
             totalDurationMs={getCategoryDuration(category)}
             onRunCategory={() => runCategory(category)}
             isRunning={runningCategories.has(category) || isRunningAll}
-            onExplore={category === FTS_CATEGORY ? () => setShowExplorer(true) : undefined}
+            onExplore={category === FTS_CATEGORY ? () => setShowExplorer(true) : category === HNSW_CATEGORY ? () => setShowVSSExplorer(true) : undefined}
           />
         ))}
         {categories.length === 0 && (

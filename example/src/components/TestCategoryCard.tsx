@@ -8,6 +8,8 @@ const CATEGORY_BADGES: Record<string, { text: string; bgColor: string; textColor
   'Full-Text Search (fts)': { text: 'FTS', bgColor: '#FFF3E0', textColor: '#E65100' },
   'File Queries (parquet)': { text: 'FILE', bgColor: '#E8F5E9', textColor: '#2E7D32' },
   'SQLite Scanner (sqlite_scanner)': { text: 'EXT', bgColor: '#F3E5F5', textColor: '#7B1FA2' },
+  'Vector Operations (vss)': { text: 'VSS', bgColor: '#EDE7F6', textColor: '#4527A0' },
+  'HNSW Index (vss)': { text: 'HNSW', bgColor: '#EDE7F6', textColor: '#4527A0' },
 }
 
 interface Props {
