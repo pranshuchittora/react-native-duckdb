@@ -1,23 +1,14 @@
 import React from 'react'
-import { View, Text } from 'react-native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useTheme } from '../theme'
 import { TestsScreen } from '../screens/TestsScreen'
 import { ExplorerStack } from './ExplorerStack'
 import { QueryStack } from './QueryStack'
+import { DatasetStack } from './DatasetStack'
 import type { RootTabParamList } from './types'
 
 const Tab = createBottomTabNavigator<RootTabParamList>()
-
-function PlaceholderScreen() {
-  const { colors } = useTheme()
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
-      <Text style={{ color: colors.textSecondary, fontSize: 16 }}>Coming soon</Text>
-    </View>
-  )
-}
 
 export function TabNavigator() {
   const { colors } = useTheme()
@@ -67,7 +58,7 @@ export function TabNavigator() {
       />
       <Tab.Screen
         name="Datasets"
-        component={PlaceholderScreen}
+        component={DatasetStack}
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="database-outline" color={color} size={size} />
