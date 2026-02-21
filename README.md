@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="react-native-duckdb-banner.png" alt="React Native DuckDB" width="100%" />
+  <img src="docs/assets/react-native-duckdb-banner.png" alt="React Native DuckDB" width="100%" />
 </p>
 
 <p align="center">
