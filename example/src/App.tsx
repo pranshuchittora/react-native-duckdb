@@ -1,4 +1,5 @@
 import React from 'react'
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native'
 import './tests/build.test'
 import './tests/lifecycle.test'
 import './tests/errors.test'
@@ -18,8 +19,36 @@ import './tests/remote.test'
 import './tests/fts.test'
 import './tests/vss.test'
 import './tests/benchmark.test'
-import { TestSuiteScreen } from './screens/TestSuiteScreen'
+import { ThemeProvider, useTheme } from './theme'
+import { TabNavigator } from './navigation/TabNavigator'
+
+function AppContent() {
+  const { colors, isDark } = useTheme()
+
+  const navTheme = {
+    ...(isDark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDark ? DarkTheme : DefaultTheme).colors,
+      primary: colors.tabBarActiveTint,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.text,
+      border: colors.border,
+      notification: colors.error,
+    },
+  }
+
+  return (
+    <NavigationContainer theme={navTheme}>
+      <TabNavigator />
+    </NavigationContainer>
+  )
+}
 
 export default function App() {
-  return <TestSuiteScreen />
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  )
 }

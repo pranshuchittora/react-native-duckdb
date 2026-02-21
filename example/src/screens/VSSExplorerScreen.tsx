@@ -41,7 +41,7 @@ interface SearchResult {
 }
 
 interface Props {
-  onBack: () => void
+  onBack?: () => void
 }
 
 const LABELS = [
@@ -85,7 +85,7 @@ function labelSeed(label: string): number {
   return Math.abs(h) % 1000
 }
 
-export function VSSExplorerScreen({ onBack }: Props) {
+export function VSSExplorerScreen({ onBack }: Props = {}) {
   const [isReady, setIsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeQuery, setActiveQuery] = useState<string>('Fruit')

@@ -24,10 +24,10 @@ interface BookResult {
 }
 
 interface Props {
-  onBack: () => void
+  onBack?: () => void
 }
 
-export function FTSExplorerScreen({ onBack }: Props) {
+export function FTSExplorerScreen({ onBack }: Props = {}) {
   const [searchQuery, setSearchQuery] = useState('')
   const [results, setResults] = useState<BookResult[]>([])
   const [isReady, setIsReady] = useState(false)
