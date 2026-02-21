@@ -63,6 +63,7 @@ type DuckDBPluginProps = {
 | `tpch` | TPC-H benchmark data generator |
 | `tpcds` | TPC-DS benchmark data generator |
 | `delta` | Delta Lake table format |
+| `httpfs` | Remote file access over HTTPS (requires 64-bit Android ABIs) |
 
 ### Example Configurations
 

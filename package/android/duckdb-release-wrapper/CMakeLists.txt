@@ -11,5 +11,13 @@
 # NDEBUG disables assert() calls inside DuckDB.
 add_compile_options(-O3 -DNDEBUG)
 
+# VSS extension workaround: usearch library calls aligned_alloc() which requires
+# Android API 28+. We target API 24. Force-include a shim header that provides
+# aligned_alloc via posix_memalign (available since API 16).
+# Directory-scoped: only affects DuckDB + extensions, not RNDuckDB.
+if(_VSS_ENABLED)
+  add_compile_options(-include "${CMAKE_CURRENT_SOURCE_DIR}/aligned_alloc_shim.h")
+endif()
+
 set(DUCKDB_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../duckdb")
 add_subdirectory(${DUCKDB_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/duckdb)

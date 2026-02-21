@@ -47,39 +47,66 @@ set(EXT_CONFIG_PATH "${DUCKDB_SOURCE_DIR}/extension/extension_config_local.cmake
 if(EXISTS "${EXT_CONFIG_PATH}")
   file(READ "${EXT_CONFIG_PATH}" _ext_config_content)
   if(_ext_config_content MATCHES "httpfs")
-    message(STATUS "react-native-duckdb: httpfs detected, building OpenSSL + libcurl for ${ANDROID_ABI}")
+    # httpfs requires OpenSSL + libcurl which only support 64-bit ABIs.
+    # 32-bit Android devices are effectively extinct (Google required 64-bit since 2019).
+    if(ANDROID_ABI STREQUAL "armeabi-v7a" OR ANDROID_ABI STREQUAL "x86")
+      message(WARNING "react-native-duckdb: httpfs skipped for ${ANDROID_ABI} (32-bit not supported). httpfs requires 64-bit ABIs (arm64-v8a, x86_64).")
+      # Strip httpfs from extension config so DuckDB doesn't try to build it.
+      # Safe because configure-extensions.js regenerates this file each CMake invocation.
+      file(STRINGS "${EXT_CONFIG_PATH}" _ext_lines)
+      file(WRITE "${EXT_CONFIG_PATH}" "")
+      foreach(_line IN LISTS _ext_lines)
+        if(NOT _line MATCHES "duckdb_extension_load\\(httpfs")
+          file(APPEND "${EXT_CONFIG_PATH}" "${_line}\n")
+        endif()
+      endforeach()
+    else()
+      message(STATUS "react-native-duckdb: httpfs detected, building OpenSSL + libcurl for ${ANDROID_ABI}")
 
-    # Pass NDK path from build.gradle so the cross-compilation script can find the toolchain
-    if(ANDROID_NDK_FOR_HTTPFS)
-      set(ENV{ANDROID_NDK_ROOT} "${ANDROID_NDK_FOR_HTTPFS}")
+      # Pass NDK path from build.gradle so the cross-compilation script can find the toolchain
+      if(ANDROID_NDK_FOR_HTTPFS)
+        set(ENV{ANDROID_NDK_ROOT} "${ANDROID_NDK_FOR_HTTPFS}")
+      endif()
+
+      set(VENDOR_DIR "${CMAKE_SOURCE_DIR}/../../vendor")
+      execute_process(
+        COMMAND bash "${CMAKE_SOURCE_DIR}/../../scripts/build-openssl-curl.sh" android "${ANDROID_ABI}"
+        RESULT_VARIABLE _httpfs_deps_result
+      )
+      if(NOT _httpfs_deps_result EQUAL 0)
+        message(FATAL_ERROR "react-native-duckdb: Failed to build OpenSSL/curl for httpfs (${ANDROID_ABI})")
+      endif()
+
+      # CMake's FindOpenSSL and FindCURL modules don't reliably locate libs during
+      # NDK cross-compilation (sysroot search paths don't include our vendor dir).
+      # Spell out every path so DuckDB's httpfs extension links correctly.
+      set(OPENSSL_ROOT_DIR "${VENDOR_DIR}/openssl/android-${ANDROID_ABI}" CACHE PATH "" FORCE)
+      set(OPENSSL_INCLUDE_DIR "${VENDOR_DIR}/openssl/android-${ANDROID_ABI}/include" CACHE PATH "" FORCE)
+      set(OPENSSL_SSL_LIBRARY "${VENDOR_DIR}/openssl/android-${ANDROID_ABI}/lib/libssl.a" CACHE FILEPATH "" FORCE)
+      set(OPENSSL_CRYPTO_LIBRARY "${VENDOR_DIR}/openssl/android-${ANDROID_ABI}/lib/libcrypto.a" CACHE FILEPATH "" FORCE)
+      set(OPENSSL_USE_STATIC_LIBS TRUE CACHE BOOL "" FORCE)
+      set(CURL_ROOT "${VENDOR_DIR}/curl/android-${ANDROID_ABI}" CACHE PATH "" FORCE)
+      set(CURL_INCLUDE_DIR "${VENDOR_DIR}/curl/android-${ANDROID_ABI}/include" CACHE PATH "" FORCE)
+      set(CURL_LIBRARY "${VENDOR_DIR}/curl/android-${ANDROID_ABI}/lib/libcurl.a" CACHE FILEPATH "" FORCE)
+      set(_HTTPFS_ENABLED TRUE)
+
+      # libcurl depends on system zlib — ensure both DuckDB and our lib can link it.
+      # Set this globally so DuckDB's own shared lib target can also find zlib.
+      find_library(ZLIB_LIB z)
+      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lz")
     endif()
+  endif()
+endif()
 
-    set(VENDOR_DIR "${CMAKE_SOURCE_DIR}/../../vendor")
-    execute_process(
-      COMMAND bash "${CMAKE_SOURCE_DIR}/../../scripts/build-openssl-curl.sh" android "${ANDROID_ABI}"
-      RESULT_VARIABLE _httpfs_deps_result
-    )
-    if(NOT _httpfs_deps_result EQUAL 0)
-      message(FATAL_ERROR "react-native-duckdb: Failed to build OpenSSL/curl for httpfs (${ANDROID_ABI})")
-    endif()
-
-    # CMake's FindOpenSSL and FindCURL modules don't reliably locate libs during
-    # NDK cross-compilation (sysroot search paths don't include our vendor dir).
-    # Spell out every path so DuckDB's httpfs extension links correctly.
-    set(OPENSSL_ROOT_DIR "${VENDOR_DIR}/openssl/android-${ANDROID_ABI}" CACHE PATH "" FORCE)
-    set(OPENSSL_INCLUDE_DIR "${VENDOR_DIR}/openssl/android-${ANDROID_ABI}/include" CACHE PATH "" FORCE)
-    set(OPENSSL_SSL_LIBRARY "${VENDOR_DIR}/openssl/android-${ANDROID_ABI}/lib/libssl.a" CACHE FILEPATH "" FORCE)
-    set(OPENSSL_CRYPTO_LIBRARY "${VENDOR_DIR}/openssl/android-${ANDROID_ABI}/lib/libcrypto.a" CACHE FILEPATH "" FORCE)
-    set(OPENSSL_USE_STATIC_LIBS TRUE CACHE BOOL "" FORCE)
-    set(CURL_ROOT "${VENDOR_DIR}/curl/android-${ANDROID_ABI}" CACHE PATH "" FORCE)
-    set(CURL_INCLUDE_DIR "${VENDOR_DIR}/curl/android-${ANDROID_ABI}/include" CACHE PATH "" FORCE)
-    set(CURL_LIBRARY "${VENDOR_DIR}/curl/android-${ANDROID_ABI}/lib/libcurl.a" CACHE FILEPATH "" FORCE)
-    set(_HTTPFS_ENABLED TRUE)
-
-    # libcurl depends on system zlib — ensure both DuckDB and our lib can link it.
-    # Set this globally so DuckDB's own shared lib target can also find zlib.
-    find_library(ZLIB_LIB z)
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lz")
+# Check if VSS extension is in the config — needs aligned_alloc workaround on Android.
+# Android Bionic's aligned_alloc requires API level 28+, but we target API 24.
+# The usearch library (bundled in duckdb-vss) calls aligned_alloc directly.
+# We provide an inline wrapper using posix_memalign (available since API 16).
+if(EXISTS "${EXT_CONFIG_PATH}")
+  file(READ "${EXT_CONFIG_PATH}" _ext_config_content_vss)
+  if(_ext_config_content_vss MATCHES "vss")
+    message(STATUS "react-native-duckdb: VSS detected, adding aligned_alloc workaround for Android API ${ANDROID_NATIVE_API_LEVEL}")
+    set(_VSS_ENABLED TRUE)
   endif()
 endif()
 
