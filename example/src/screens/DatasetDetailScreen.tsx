@@ -141,8 +141,13 @@ export function DatasetDetailScreen() {
     const resolved = resolveQuery(query.sql, dataset.parquetPath)
     setCurrentQuery(resolved)
     setActiveChip(idx)
-    executeQuery(resolved)
-  }, [dataset, executeQuery])
+    setColumns([])
+    setRows([])
+    setRowCount(0)
+    setExecTimeMs(undefined)
+    setQueryError(undefined)
+    setOverflowed(false)
+  }, [dataset])
 
   const handleExecute = useCallback(() => {
     if (currentQuery.trim()) {

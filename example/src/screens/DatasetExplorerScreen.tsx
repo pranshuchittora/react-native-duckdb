@@ -213,6 +213,7 @@ export function DatasetExplorerScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.chipScroll}
         contentContainerStyle={styles.chipRow}>
         {DATASET_CATEGORIES.map(cat => renderCategory(cat))}
       </ScrollView>
@@ -265,11 +266,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   searchInput: { fontSize: 14, paddingVertical: 10, fontFamily: 'monospace' },
+  chipScroll: {
+    flexGrow: 0,
+    marginBottom: 8,
+  },
   chipRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingVertical: 4,
     gap: 8,
+    alignItems: 'center',
   },
   chip: {
     paddingHorizontal: 12,
