@@ -29,6 +29,7 @@ const OUT_OF_TREE_EXTENSIONS = {
   fts: {
     git_url: 'https://github.com/duckdb/duckdb-fts',
     git_tag: '39376623630a968154bef4e6930d12ad0b59d7fb',
+    include_dir: 'extension/fts/include',
   },
 };
 
@@ -138,9 +139,12 @@ function generateCmake(extensions, duckdbPath) {
     for (const ext of extensions) {
       if (OUT_OF_TREE_EXTENSIONS[ext]) {
         const oot = OUT_OF_TREE_EXTENSIONS[ext];
-        lines.push(
-          `duckdb_extension_load(${ext} GIT_URL ${oot.git_url} GIT_TAG ${oot.git_tag})`
-        );
+        let cmd = `duckdb_extension_load(${ext} GIT_URL ${oot.git_url} GIT_TAG ${oot.git_tag}`;
+        if (oot.include_dir) {
+          cmd += ` INCLUDE_DIR ${oot.include_dir}`;
+        }
+        cmd += ')';
+        lines.push(cmd);
       } else {
         lines.push(`duckdb_extension_load(${ext})`);
       }
