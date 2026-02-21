@@ -40,42 +40,50 @@ export function TestCategoryCard({
         onPress={() => setExpanded(!expanded)}
         activeOpacity={0.7}>
         <View style={styles.header}>
-          <Text style={styles.chevron}>{expanded ? '▼' : '▶'}</Text>
-          <Text style={styles.categoryName}>{name}</Text>
-          {badge && (
-            <View style={[styles.badge, { backgroundColor: badge.bgColor }]}>
-              <Text style={[styles.badgeText, { color: badge.textColor }]}>{badge.text}</Text>
-            </View>
-          )}
-          {hasResults && (
-            <View style={styles.counts}>
-              {passCount > 0 && (
-                <Text style={styles.passCount}>✓{passCount}</Text>
+          <View style={styles.headerContent}>
+            <View style={styles.titleRow}>
+              <Text style={styles.chevron}>{expanded ? '▼' : '▶'}</Text>
+              <Text style={styles.categoryName} numberOfLines={1}>{name}</Text>
+              {badge && (
+                <View style={[styles.badge, { backgroundColor: badge.bgColor }]}>
+                  <Text style={[styles.badgeText, { color: badge.textColor }]}>{badge.text}</Text>
+                </View>
               )}
-              {failCount > 0 && (
-                <Text style={styles.failCount}>✗{failCount}</Text>
-              )}
-              <Text style={styles.totalCount}>/{total}</Text>
             </View>
-          )}
-          {totalDurationMs !== undefined && (
-            <Text style={styles.duration}>{totalDurationMs}ms</Text>
-          )}
-          {onExplore && (
+            {hasResults && (
+              <View style={styles.metaRow}>
+                <View style={styles.counts}>
+                  {passCount > 0 && (
+                    <Text style={styles.passCount}>✓{passCount}</Text>
+                  )}
+                  {failCount > 0 && (
+                    <Text style={styles.failCount}>✗{failCount}</Text>
+                  )}
+                  <Text style={styles.totalCount}>/{total}</Text>
+                </View>
+                {totalDurationMs !== undefined && (
+                  <Text style={styles.duration}>{totalDurationMs}ms</Text>
+                )}
+              </View>
+            )}
+          </View>
+          <View style={styles.actions}>
+            {onExplore && (
+              <TouchableOpacity
+                onPress={onExplore}
+                style={styles.exploreButton}>
+                <Text style={styles.exploreButtonText}>Explore</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
-              onPress={onExplore}
-              style={styles.exploreButton}>
-              <Text style={styles.exploreButtonText}>Explore</Text>
+              onPress={onRunCategory}
+              style={[styles.runButton, isRunning && styles.runButtonDisabled]}
+              disabled={isRunning}>
+              <Text style={styles.runButtonText}>
+                {isRunning ? '...' : 'Run'}
+              </Text>
             </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            onPress={onRunCategory}
-            style={[styles.runButton, isRunning && styles.runButtonDisabled]}
-            disabled={isRunning}>
-            <Text style={styles.runButtonText}>
-              {isRunning ? '...' : 'Run'}
-            </Text>
-          </TouchableOpacity>
+          </View>
         </View>
       </TouchableOpacity>
       {expanded && (
@@ -113,13 +121,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 14,
   },
+  headerContent: {
+    flex: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    marginLeft: 22,
+  },
   chevron: {
     fontSize: 12,
     color: '#666',
     marginRight: 10,
   },
   categoryName: {
-    flex: 1,
+    flexShrink: 1,
     fontSize: 16,
     fontWeight: '600',
     color: '#212121',
@@ -148,7 +169,11 @@ const styles = StyleSheet.create({
   duration: {
     fontSize: 12,
     color: '#666',
-    marginRight: 10,
+  },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
   },
   runButton: {
     backgroundColor: '#2196F3',
