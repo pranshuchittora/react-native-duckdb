@@ -5,6 +5,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { useTheme } from '../theme'
 import { TestsScreen } from '../screens/TestsScreen'
 import { ExplorerStack } from './ExplorerStack'
+import { QueryStack } from './QueryStack'
 import type { RootTabParamList } from './types'
 
 const Tab = createBottomTabNavigator<RootTabParamList>()
@@ -57,7 +58,7 @@ export function TabNavigator() {
       />
       <Tab.Screen
         name="Query"
-        component={PlaceholderScreen}
+        component={QueryStack}
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="code-tags" color={color} size={size} />

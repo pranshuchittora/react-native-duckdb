@@ -16,3 +16,8 @@ export type ExplorerStackParamList = {
   TypeInspector: undefined
   AttachDatabase: undefined
 }
+
+export type QueryStackParamList = {
+  QueryRunner: { prefillSql?: string } | undefined
+  QueryHistory: undefined
+}
