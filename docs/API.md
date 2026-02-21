@@ -293,6 +293,7 @@ arabic, basque, catalan, danish, dutch, english, finnish, french, german, greek,
 - **Static snapshot index** — The FTS index does not auto-update. After INSERT/UPDATE/DELETE, you must `PRAGMA drop_fts_index` and recreate it.
 - **No CJK tokenization** — The Snowball stemmer splits on whitespace only. Chinese, Japanese, and Korean text won't be properly tokenized (individual characters won't be searchable as words).
 - **In-memory DB loses index on close** — The FTS index is stored in DuckDB's schema. Closing an in-memory database discards it.
+- **Android: rowid overflow bug** — DuckDB's FTS extension may fail on Android with "Information loss on integer cast" due to internal `rowid` values exceeding `int64` range. This is a known upstream DuckDB bug. FTS works reliably on iOS. The `stem()` function (for stemmer testing) works on both platforms.
 
 **Binary Size Impact:**
 
