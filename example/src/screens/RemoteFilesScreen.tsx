@@ -68,21 +68,25 @@ export function RemoteFilesScreen() {
   const dbRef = useRef<ReturnType<typeof HybridDuckDB.open> | null>(null)
 
   useEffect(() => {
-    try {
-      const db = HybridDuckDB.open(':memory:', {})
-      dbRef.current = db
-      db.executeSync('INSTALL httpfs; LOAD httpfs;')
-      setIsExtLoading(false)
-    } catch (e: any) {
-      setError('Failed to load httpfs extension: ' + String(e.message || e))
-      setIsExtLoading(false)
-    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const db = HybridDuckDB.open(':memory:', {})
+        dbRef.current = db
+        await db.execute('INSTALL httpfs; LOAD httpfs;')
+        if (!cancelled) setIsExtLoading(false)
+      } catch (e: any) {
+        if (!cancelled) {
+          setError('Failed to load httpfs extension: ' + String(e.message || e))
+          setIsExtLoading(false)
+        }
+      }
+    })()
 
     return () => {
+      cancelled = true
       if (dbRef.current) {
-        try {
-          dbRef.current.close()
-        } catch (_) {}
+        try { dbRef.current.close() } catch (_) {}
         dbRef.current = null
       }
     }

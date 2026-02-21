@@ -84,38 +84,33 @@ export function AttachDatabaseScreen() {
     })
   }, [])
 
-  const executeStep1 = useCallback(() => {
+  const executeStep1 = useCallback(async () => {
     const db = dbRef.current
     if (!db) return
     try {
-      // Create in-memory attached databases (portable, no file system needed)
-      db.executeSync("ATTACH ':memory:' AS sales_db")
-      db.executeSync(`
+      await db.execute("ATTACH ':memory:' AS sales_db")
+      await db.execute(`
         CREATE TABLE sales_db.sales (
           id INTEGER, product VARCHAR, amount DOUBLE, sale_date VARCHAR
         )
       `)
       for (const row of SALES_DATA) {
-        db.executeSync(
+        await db.execute(
           `INSERT INTO sales_db.sales VALUES (${row[0]}, '${row[1]}', ${row[2]}, '${row[3]}')`
         )
       }
 
-      db.executeSync("ATTACH ':memory:' AS inventory_db")
-      db.executeSync(`
+      await db.execute("ATTACH ':memory:' AS inventory_db")
+      await db.execute(`
         CREATE TABLE inventory_db.inventory (
           product VARCHAR, stock INTEGER, warehouse VARCHAR
         )
       `)
       for (const row of INVENTORY_DATA) {
-        db.executeSync(
+        await db.execute(
           `INSERT INTO inventory_db.inventory VALUES ('${row[0]}', ${row[1]}, '${row[2]}')`
         )
       }
-
-      // Detach them so step 2 can re-attach (we need them created and detached for demo flow)
-      // Actually, for in-memory, we keep them attached — step 2 will just show them
-      // The flow: step 1 creates+attaches, step 2 shows the database list, step 3 queries, step 4 detaches
 
       updateStep(0, {
         status: 'done',
@@ -127,11 +122,11 @@ export function AttachDatabaseScreen() {
     }
   }, [updateStep, unlockNext])
 
-  const executeStep2 = useCallback(() => {
+  const executeStep2 = useCallback(async () => {
     const db = dbRef.current
     if (!db) return
     try {
-      const result = db.executeSync('SHOW DATABASES')
+      const result = await db.execute('SHOW DATABASES')
       const records = result.toRows()
       const cols = result.columnNames
       const rows = records.map(r => cols.map(c => r[c]))
@@ -148,7 +143,7 @@ export function AttachDatabaseScreen() {
     }
   }, [updateStep, unlockNext])
 
-  const executeStep3 = useCallback(() => {
+  const executeStep3 = useCallback(async () => {
     const db = dbRef.current
     if (!db) return
     try {
@@ -156,7 +151,7 @@ export function AttachDatabaseScreen() {
 FROM sales_db.sales s
 JOIN inventory_db.inventory i ON s.product = i.product
 ORDER BY s.product`
-      const result = db.executeSync(sql)
+      const result = await db.execute(sql)
       const records = result.toRows()
       const cols = result.columnNames
       const rows = records.map(r => cols.map(c => r[c]))
@@ -173,14 +168,14 @@ ORDER BY s.product`
     }
   }, [updateStep, unlockNext])
 
-  const executeStep4 = useCallback(() => {
+  const executeStep4 = useCallback(async () => {
     const db = dbRef.current
     if (!db) return
     try {
-      db.executeSync('DETACH sales_db')
-      db.executeSync('DETACH inventory_db')
+      await db.execute('DETACH sales_db')
+      await db.execute('DETACH inventory_db')
 
-      const result = db.executeSync('SHOW DATABASES')
+      const result = await db.execute('SHOW DATABASES')
       const records = result.toRows()
       const cols = result.columnNames
       const rows = records.map(r => cols.map(c => r[c]))
@@ -198,11 +193,11 @@ ORDER BY s.product`
 
   const stepHandlers = [executeStep1, executeStep2, executeStep3, executeStep4]
 
-  const handleReset = useCallback(() => {
+  const handleReset = useCallback(async () => {
     const db = dbRef.current
     if (!db) return
-    try { db.executeSync('DETACH sales_db') } catch (_) {}
-    try { db.executeSync('DETACH inventory_db') } catch (_) {}
+    try { await db.execute('DETACH sales_db') } catch (_) {}
+    try { await db.execute('DETACH inventory_db') } catch (_) {}
     setSteps([
       { status: 'ready' },
       { status: 'locked' },

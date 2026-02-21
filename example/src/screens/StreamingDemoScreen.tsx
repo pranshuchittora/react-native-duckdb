@@ -57,8 +57,8 @@ export function StreamingDemoScreen() {
     setPreviewRows([])
 
     try {
-      db.executeSync('DROP TABLE IF EXISTS stream_demo')
-      db.executeSync(`
+      await db.execute('DROP TABLE IF EXISTS stream_demo')
+      await db.execute(`
         CREATE TABLE stream_demo AS
         SELECT
           i AS id,

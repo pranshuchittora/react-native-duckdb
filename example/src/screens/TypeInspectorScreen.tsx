@@ -111,85 +111,89 @@ export function TypeInspectorScreen() {
   const [expandedType, setExpandedType] = useState<string | null>(null)
 
   useEffect(() => {
-    try {
-      const db = HybridDuckDB.open(':memory:', {})
-      dbRef.current = db
-
-      db.executeSync('DROP TABLE IF EXISTS type_demo')
-      db.executeSync(TYPE_SQL)
-
-      // Handle ENUM separately
+    let cancelled = false
+    ;(async () => {
       try {
-        db.executeSync("CREATE TYPE mood AS ENUM ('happy', 'sad', 'neutral')")
-        db.executeSync("ALTER TABLE type_demo ADD COLUMN enum_val mood DEFAULT 'happy'")
-        db.executeSync("UPDATE type_demo SET enum_val = 'happy'")
-      } catch (_) {}
+        const db = HybridDuckDB.open(':memory:', {})
+        dbRef.current = db
 
-      // Handle UNION separately
-      try {
-        db.executeSync("ALTER TABLE type_demo ADD COLUMN union_val UNION(num INTEGER, str VARCHAR) DEFAULT 42::UNION(num INTEGER, str VARCHAR)")
-        db.executeSync("UPDATE type_demo SET union_val = 42::UNION(num INTEGER, str VARCHAR)")
-      } catch (_) {}
+        await db.execute('DROP TABLE IF EXISTS type_demo')
+        await db.execute(TYPE_SQL)
 
-      const result = db.executeSync('SELECT * FROM type_demo')
-      const rows = result.toRows()
-      const row = rows[0] || {}
-      const colNames = result.columnNames
-      const colTypes = result.columnTypes
+        try {
+          await db.execute("CREATE TYPE mood AS ENUM ('happy', 'sad', 'neutral')")
+          await db.execute("ALTER TABLE type_demo ADD COLUMN enum_val mood DEFAULT 'happy'")
+          await db.execute("UPDATE type_demo SET enum_val = 'happy'")
+        } catch (_) {}
 
-      const typeMap: Record<string, { type: string; value: any }> = {}
-      colNames.forEach((name, i) => {
-        typeMap[name] = { type: colTypes[i], value: row[name] }
-      })
+        try {
+          await db.execute("ALTER TABLE type_demo ADD COLUMN union_val UNION(num INTEGER, str VARCHAR) DEFAULT 42::UNION(num INTEGER, str VARCHAR)")
+          await db.execute("UPDATE type_demo SET union_val = 42::UNION(num INTEGER, str VARCHAR)")
+        } catch (_) {}
 
-      const builtSections: Section[] = []
-      let count = 0
+        const result = await db.execute('SELECT * FROM type_demo')
+        if (cancelled) return
+        const rows = result.toRows()
+        const row = rows[0] || {}
+        const colNames = result.columnNames
+        const colTypes = result.columnTypes
 
-      for (const [category, keys] of Object.entries(CATEGORIES)) {
-        const entries: TypeEntry[] = []
-        for (const key of keys) {
-          const info = typeMap[key]
-          if (info) {
-            const jsVal = info.value
-            entries.push({
-              name: key.replace(/_val$/, '').toUpperCase(),
-              duckdbType: info.type,
-              jsType: typeof jsVal,
-              jsValue: jsVal === null || jsVal === undefined ? 'null' : String(jsVal),
-              stringRepr: String(jsVal),
-              sql: `${jsVal === null ? 'NULL' : `...::${info.type}`}`,
-              notes: TYPE_NOTES[key] || '',
-              supported: true,
-            })
-            count++
-          } else {
-            entries.push({
-              name: key.replace(/_val$/, '').toUpperCase(),
-              duckdbType: '?',
-              jsType: '?',
-              jsValue: '',
-              stringRepr: '',
-              sql: '',
-              notes: TYPE_NOTES[key] || '',
-              supported: false,
-            })
-            count++
+        const typeMap: Record<string, { type: string; value: any }> = {}
+        colNames.forEach((name, i) => {
+          typeMap[name] = { type: colTypes[i], value: row[name] }
+        })
+
+        const builtSections: Section[] = []
+        let count = 0
+
+        for (const [category, keys] of Object.entries(CATEGORIES)) {
+          const entries: TypeEntry[] = []
+          for (const key of keys) {
+            const info = typeMap[key]
+            if (info) {
+              const jsVal = info.value
+              entries.push({
+                name: key.replace(/_val$/, '').toUpperCase(),
+                duckdbType: info.type,
+                jsType: typeof jsVal,
+                jsValue: jsVal === null || jsVal === undefined ? 'null' : String(jsVal),
+                stringRepr: String(jsVal),
+                sql: `${jsVal === null ? 'NULL' : `...::${info.type}`}`,
+                notes: TYPE_NOTES[key] || '',
+                supported: true,
+              })
+              count++
+            } else {
+              entries.push({
+                name: key.replace(/_val$/, '').toUpperCase(),
+                duckdbType: '?',
+                jsType: '?',
+                jsValue: '',
+                stringRepr: '',
+                sql: '',
+                notes: TYPE_NOTES[key] || '',
+                supported: false,
+              })
+              count++
+            }
+          }
+          if (entries.length > 0) {
+            builtSections.push({ title: category, data: entries })
           }
         }
-        if (entries.length > 0) {
-          builtSections.push({ title: category, data: entries })
-        }
-      }
 
-      setSections(builtSections)
-      setTotalTypes(count)
-      setLoading(false)
-    } catch (e: any) {
-      setError(String(e.message || e))
-      setLoading(false)
-    }
+        setSections(builtSections)
+        setTotalTypes(count)
+        setLoading(false)
+      } catch (e: any) {
+        if (cancelled) return
+        setError(String(e.message || e))
+        setLoading(false)
+      }
+    })()
 
     return () => {
+      cancelled = true
       if (dbRef.current) {
         try { dbRef.current.close() } catch (_) {}
         dbRef.current = null

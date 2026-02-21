@@ -58,24 +58,26 @@ export function DatasetDetailScreen() {
   const [overflowed, setOverflowed] = useState(false)
 
   const dbRef = useRef<ReturnType<typeof HybridDuckDB.open> | null>(null)
+  const [dbReady, setDbReady] = useState(false)
   const schemaFetchedPath = useRef<string | null>(null)
 
-  const getDb = useCallback(() => {
-    if (!dbRef.current) {
-      const db = HybridDuckDB.open(':memory:', {})
-      try { db.executeSync('LOAD httpfs') } catch {}
-      dbRef.current = db
-    }
-    return dbRef.current
-  }, [])
-
   useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const db = HybridDuckDB.open(':memory:', {})
+      dbRef.current = db
+      try { await db.execute('LOAD httpfs') } catch {}
+      if (!cancelled) setDbReady(true)
+    })()
+
     return () => {
+      cancelled = true
       if (dbRef.current) { try { dbRef.current.close() } catch {} }
     }
   }, [])
 
   useEffect(() => {
+    if (!dbReady || !dbRef.current) return
     if (schemaFetchedPath.current === dataset.parquetPath) return
     schemaFetchedPath.current = dataset.parquetPath
     setSchemaLoading(true)
@@ -84,7 +86,7 @@ export function DatasetDetailScreen() {
     let cancelled = false
     ;(async () => {
       try {
-        const db = getDb()
+        const db = dbRef.current!
         const describeSql = `DESCRIBE SELECT * FROM '${dataset.parquetPath}' LIMIT 0`
         const result = await db.execute(describeSql)
         if (cancelled) return
@@ -99,15 +101,16 @@ export function DatasetDetailScreen() {
     })()
 
     return () => { cancelled = true }
-  }, [dataset.parquetPath, getDb])
+  }, [dataset.parquetPath, dbReady])
 
   const executeQuery = useCallback(async (sql: string) => {
+    if (!dbRef.current) return
     setExecuting(true)
     setQueryError(undefined)
     setOverflowed(false)
 
     try {
-      const db = getDb()
+      const db = dbRef.current
       const limitedSql = ensureLimit(sql)
       const start = Date.now()
       const result = await db.execute(limitedSql)
@@ -140,7 +143,7 @@ export function DatasetDetailScreen() {
     } finally {
       setExecuting(false)
     }
-  }, [getDb])
+  }, [])
 
   const handleChipPress = useCallback((idx: number) => {
     const query = dataset.sampleQueries[idx]

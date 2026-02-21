@@ -47,9 +47,9 @@ export function AppenderBenchmarkScreen() {
     setError(null)
 
     try {
-      // Phase 1: INSERT loop
-      db.executeSync('DROP TABLE IF EXISTS insert_bench')
-      db.executeSync('CREATE TABLE insert_bench (id INTEGER, name VARCHAR, value DOUBLE)')
+      // Phase 1: INSERT loop (executeSync intentional — benchmarking JSI overhead)
+      await db.execute('DROP TABLE IF EXISTS insert_bench')
+      await db.execute('CREATE TABLE insert_bench (id INTEGER, name VARCHAR, value DOUBLE)')
 
       const insertStart = Date.now()
       for (let i = 0; i < selectedRows; i++) {
@@ -57,15 +57,15 @@ export function AppenderBenchmarkScreen() {
       }
       const insertMs = Date.now() - insertStart
 
-      db.executeSync('DROP TABLE insert_bench')
+      await db.execute('DROP TABLE insert_bench')
 
       // Yield to UI before phase 2
       await new Promise(resolve => setTimeout(resolve, 0))
       setPhase('appender')
 
       // Phase 2: Appender
-      db.executeSync('DROP TABLE IF EXISTS appender_bench')
-      db.executeSync('CREATE TABLE appender_bench (id INTEGER, name VARCHAR, value DOUBLE)')
+      await db.execute('DROP TABLE IF EXISTS appender_bench')
+      await db.execute('CREATE TABLE appender_bench (id INTEGER, name VARCHAR, value DOUBLE)')
 
       const appenderStart = Date.now()
       await withAppender(db, 'appender_bench', (appender) => {
@@ -75,7 +75,7 @@ export function AppenderBenchmarkScreen() {
       })
       const appenderMs = Date.now() - appenderStart
 
-      db.executeSync('DROP TABLE appender_bench')
+      await db.execute('DROP TABLE appender_bench')
 
       const result: BenchmarkResult = { rowCount: selectedRows, insertMs, appenderMs }
       setResults(prev => [result, ...prev].slice(0, 3))

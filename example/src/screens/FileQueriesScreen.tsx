@@ -119,17 +119,16 @@ export function FileQueriesScreen() {
     setError(null)
   }, [getFilePath])
 
-  const ensureBooksTable = useCallback((db: ReturnType<typeof HybridDuckDB.open>) => {
-    // Create the books_data table if it doesn't exist (from bundled books.json)
+  const ensureBooksTable = useCallback(async (db: ReturnType<typeof HybridDuckDB.open>) => {
     try {
-      db.executeSync('SELECT 1 FROM books_data LIMIT 1')
+      await db.execute('SELECT 1 FROM books_data LIMIT 1')
     } catch {
       const books = require('../data/books.json')
-      db.executeSync(
+      await db.execute(
         'CREATE TABLE books_data (id VARCHAR, title VARCHAR, description VARCHAR, author VARCHAR, language VARCHAR)'
       )
       for (const b of books) {
-        db.executeSync(
+        await db.execute(
           `INSERT INTO books_data VALUES ('${b.id}', '${b.title.replace(/'/g, "''")}', '${b.description.replace(/'/g, "''")}', '${b.author.replace(/'/g, "''")}', '${b.language}')`
         )
       }
@@ -137,7 +136,7 @@ export function FileQueriesScreen() {
   }, [])
 
   const viewSchema = useCallback(
-    (file: BundledFile) => {
+    async (file: BundledFile) => {
       const db = dbRef.current
       if (!db) return
 
@@ -148,8 +147,8 @@ export function FileQueriesScreen() {
 
       try {
         if (file.name === 'books.json') {
-          ensureBooksTable(db)
-          const result = db.executeSync('DESCRIBE books_data')
+          await ensureBooksTable(db)
+          const result = await db.execute('DESCRIBE books_data')
           const records = result.toRows()
           const cols = result.columnNames
           setSchemaColumns(cols)
@@ -170,7 +169,7 @@ export function FileQueriesScreen() {
     setIsLoading(true)
     setError(null)
     try {
-      ensureBooksTable(db)
+      await ensureBooksTable(db)
       const start = Date.now()
       const result = await db.execute(query)
       setExecutionTimeMs(Date.now() - start)

@@ -56,10 +56,10 @@ export function DatasetExplorerScreen() {
     try {
       const db = HybridDuckDB.open(':memory:', {})
       try {
-        db.executeSync('LOAD httpfs')
+        await db.execute('LOAD httpfs')
       } catch {
-        db.executeSync('INSTALL httpfs')
-        db.executeSync('LOAD httpfs')
+        await db.execute('INSTALL httpfs')
+        await db.execute('LOAD httpfs')
       }
       db.close()
       httpfsLoaded = true

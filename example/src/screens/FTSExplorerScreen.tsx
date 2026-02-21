@@ -46,45 +46,49 @@ CREATE TABLE books (id VARCHAR, title VARCHAR, description VARCHAR, author VARCH
 PRAGMA create_fts_index('books', 'id', 'title', 'description', stemmer='english');`
 
   useEffect(() => {
-    try {
-      const db = HybridDuckDB.open(':memory:', {})
-      dbRef.current = db
+    let cancelled = false
+    ;(async () => {
+      try {
+        const db = HybridDuckDB.open(':memory:', {})
+        dbRef.current = db
 
-      db.executeSync("LOAD 'fts'")
-      db.executeSync(
-        'CREATE TABLE books (id VARCHAR, title VARCHAR, description VARCHAR, author VARCHAR, language VARCHAR)'
-      )
-
-      for (const b of books) {
-        db.executeSync(
-          `INSERT INTO books VALUES ('${b.id}', '${b.title.replace(/'/g, "''")}', '${b.description.replace(/'/g, "''")}', '${b.author.replace(/'/g, "''")}', '${b.language}')`
+        await db.execute("LOAD 'fts'")
+        await db.execute(
+          'CREATE TABLE books (id VARCHAR, title VARCHAR, description VARCHAR, author VARCHAR, language VARCHAR)'
         )
+
+        for (const b of books) {
+          await db.execute(
+            `INSERT INTO books VALUES ('${b.id}', '${b.title.replace(/'/g, "''")}', '${b.description.replace(/'/g, "''")}', '${b.author.replace(/'/g, "''")}', '${b.language}')`
+          )
+        }
+
+        await db.execute(
+          "PRAGMA create_fts_index('books', 'id', 'title', 'description', stemmer='english')"
+        )
+
+        const all = await db.execute(
+          'SELECT id, title, description, author, language FROM books ORDER BY id'
+        )
+        const records = all.toRows()
+        const cols = all.columnNames
+        if (cancelled) return
+        setColumns(cols)
+        setRows(records.map((r: any) => cols.map((c) => r[c])))
+        setIsReady(true)
+        setIsInitializing(false)
+      } catch (e: any) {
+        if (cancelled) return
+        setError(String(e.message || e))
+        setIsInitializing(false)
       }
-
-      db.executeSync(
-        "PRAGMA create_fts_index('books', 'id', 'title', 'description', stemmer='english')"
-      )
-
-      const all = db.executeSync(
-        'SELECT id, title, description, author, language FROM books ORDER BY id'
-      )
-      const records = all.toRows()
-      const cols = all.columnNames
-      setColumns(cols)
-      setRows(records.map((r: any) => cols.map((c) => r[c])))
-      setIsReady(true)
-      setIsInitializing(false)
-    } catch (e: any) {
-      setError(String(e.message || e))
-      setIsInitializing(false)
-    }
+    })()
 
     return () => {
+      cancelled = true
       if (timerRef.current) clearTimeout(timerRef.current)
       if (dbRef.current) {
-        try {
-          dbRef.current.close()
-        } catch (_) {}
+        try { dbRef.current.close() } catch (_) {}
         dbRef.current = null
       }
     }

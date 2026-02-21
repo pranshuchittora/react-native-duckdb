@@ -110,41 +110,45 @@ CREATE INDEX idx_l2 ON embeddings USING HNSW (vec) WITH (metric = 'l2sq');
 CREATE INDEX idx_ip ON embeddings USING HNSW (vec) WITH (metric = 'ip');`
 
   useEffect(() => {
-    try {
-      const db = HybridDuckDB.open(':memory:', {})
-      dbRef.current = db
+    let cancelled = false
+    ;(async () => {
+      try {
+        const db = HybridDuckDB.open(':memory:', {})
+        dbRef.current = db
 
-      db.executeSync("LOAD 'vss'")
-      db.executeSync(
-        'CREATE TABLE embeddings (id INTEGER, label VARCHAR, vec FLOAT[' + DIMS + '])'
-      )
-
-      for (let i = 0; i < NUM_VECTORS; i++) {
-        const label = LABELS[i % LABELS.length]
-        const seed = labelSeed(label) + Math.floor(i / LABELS.length) * 7
-        const vec = makeVector(seed)
-        db.executeSync(
-          "INSERT INTO embeddings VALUES (" + i + ", '" + label + "', " + vecLiteral(vec) + ')'
+        await db.execute("LOAD 'vss'")
+        await db.execute(
+          'CREATE TABLE embeddings (id INTEGER, label VARCHAR, vec FLOAT[' + DIMS + '])'
         )
+
+        for (let i = 0; i < NUM_VECTORS; i++) {
+          const label = LABELS[i % LABELS.length]
+          const seed = labelSeed(label) + Math.floor(i / LABELS.length) * 7
+          const vec = makeVector(seed)
+          await db.execute(
+            "INSERT INTO embeddings VALUES (" + i + ", '" + label + "', " + vecLiteral(vec) + ')'
+          )
+        }
+
+        await db.execute("CREATE INDEX idx_cosine ON embeddings USING HNSW (vec) WITH (metric = 'cosine')")
+        await db.execute("CREATE INDEX idx_l2 ON embeddings USING HNSW (vec) WITH (metric = 'l2sq')")
+        await db.execute("CREATE INDEX idx_ip ON embeddings USING HNSW (vec) WITH (metric = 'ip')")
+
+        if (cancelled) return
+        setIsReady(true)
+        setIsInitializing(false)
+        await runQuery(db, 'Fruit', 'cosine', 5)
+      } catch (e: any) {
+        if (cancelled) return
+        setError(String(e.message || e))
+        setIsInitializing(false)
       }
-
-      db.executeSync("CREATE INDEX idx_cosine ON embeddings USING HNSW (vec) WITH (metric = 'cosine')")
-      db.executeSync("CREATE INDEX idx_l2 ON embeddings USING HNSW (vec) WITH (metric = 'l2sq')")
-      db.executeSync("CREATE INDEX idx_ip ON embeddings USING HNSW (vec) WITH (metric = 'ip')")
-
-      setIsReady(true)
-      setIsInitializing(false)
-      runQuery(db, 'Fruit', 'cosine', 5)
-    } catch (e: any) {
-      setError(String(e.message || e))
-      setIsInitializing(false)
-    }
+    })()
 
     return () => {
+      cancelled = true
       if (dbRef.current) {
-        try {
-          dbRef.current.close()
-        } catch (_) {}
+        try { dbRef.current.close() } catch (_) {}
         dbRef.current = null
       }
     }
