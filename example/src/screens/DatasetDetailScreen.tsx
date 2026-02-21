@@ -159,6 +159,7 @@ export function DatasetDetailScreen() {
   const categoryColor = {
     tabular: '#FFF100',
     nlp: '#7D66FF',
+    benchmark: '#FF6900',
   }[dataset.category] ?? brand.yellow
 
   return (

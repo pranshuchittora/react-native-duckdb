@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   FlatList,
-  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
@@ -23,6 +22,13 @@ type NavProp = NativeStackNavigationProp<DatasetStackParamList, 'DatasetExplorer
 const CATEGORY_COLORS: Record<string, string> = {
   tabular: '#FFF100',
   nlp: '#7D66FF',
+  benchmark: '#FF6900',
+}
+
+const FORMAT_BADGE: Record<string, { bg: string; text: string }> = {
+  parquet: { bg: '#E3F2FD', text: '#1565C0' },
+  csv: { bg: '#E8F5E9', text: '#2E7D32' },
+  json: { bg: '#FFF3E0', text: '#E65100' },
 }
 
 let httpfsLoaded = false
@@ -94,6 +100,7 @@ export function DatasetExplorerScreen() {
   const openCustomPath = useCallback(() => {
     const trimmed = debouncedSearch.trim()
     const path = trimmed.startsWith('hf://') ? trimmed : `hf://datasets/${trimmed}`
+    const fmt = path.endsWith('.csv') ? 'csv' as const : path.endsWith('.json') || path.endsWith('.jsonl') ? 'json' as const : 'parquet' as const
     const custom: Dataset = {
       id: 'custom',
       name: 'Custom Dataset',
@@ -101,6 +108,7 @@ export function DatasetExplorerScreen() {
       parquetPath: path,
       description: 'User-provided Hugging Face dataset path',
       category: 'tabular',
+      format: fmt,
       icon: '📦',
       rowEstimate: 'Unknown',
       sampleQueries: [
@@ -136,6 +144,7 @@ export function DatasetExplorerScreen() {
 
   const renderDataset: ListRenderItem<Dataset> = useCallback(({ item }) => {
     const accentColor = CATEGORY_COLORS[item.category] ?? brand.yellow
+    const fmt = FORMAT_BADGE[item.format]
     return (
       <TouchableOpacity
         style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -152,6 +161,13 @@ export function DatasetExplorerScreen() {
                 {item.category}
               </Text>
             </View>
+            {fmt && (
+              <View style={[styles.badge, { backgroundColor: fmt.bg }]}>
+                <Text style={[styles.badgeText, { color: fmt.text }]}>
+                  {item.format.toUpperCase()}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
         <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={2}>
@@ -210,13 +226,9 @@ export function DatasetExplorerScreen() {
         />
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chipScroll}
-        contentContainerStyle={styles.chipRow}>
+      <View style={styles.chipRow}>
         {DATASET_CATEGORIES.map(cat => renderCategory(cat))}
-      </ScrollView>
+      </View>
 
       {isCustomPath && (
         <TouchableOpacity
@@ -266,14 +278,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   searchInput: { fontSize: 14, paddingVertical: 10, fontFamily: 'monospace' },
-  chipScroll: {
-    flexGrow: 0,
-    marginBottom: 8,
-  },
   chipRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 4,
+    paddingVertical: 8,
     gap: 8,
     alignItems: 'center',
   },
@@ -293,7 +301,7 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   cardIcon: { fontSize: 24, marginRight: 10 },
-  cardTitleArea: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cardTitleArea: { flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   cardName: { fontSize: 16, fontWeight: '600', flexShrink: 1 },
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
