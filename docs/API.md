@@ -80,6 +80,7 @@ Configure extensions in your app's `package.json`:
 | `sqlite_scanner` | Read and write SQLite databases | `ATTACH 'file.sqlite' (TYPE sqlite)` |
 | `httpfs` | Remote file access over HTTPS | `SELECT * FROM 'https://url/data.parquet'` |
 | `fts` | BM25 full-text search with 27 language stemmers | `PRAGMA create_fts_index(...)` |
+| `vss` | HNSW vector similarity search for nearest-neighbor queries | `CREATE INDEX ... USING HNSW (vec)` |
 | `autocomplete` | SQL autocomplete suggestions | Editor integrations |
 | `tpch` | TPC-H benchmark data generator | Benchmarking |
 | `tpcds` | TPC-DS benchmark data generator | Benchmarking |
@@ -298,6 +299,127 @@ arabic, basque, catalan, danish, dutch, english, finnish, french, german, greek,
 **Binary Size Impact:**
 
 Minimal — FTS adds the Snowball stemmer library (~35 source files), no external dependencies like OpenSSL or libcurl.
+
+### Vector Similarity Search (vss)
+
+The `vss` extension adds HNSW (Hierarchical Navigable Small Worlds) indexing for approximate nearest-neighbor search on fixed-size float arrays. This makes react-native-duckdb the first mobile database with native on-device vector search — enabling semantic search, RAG pipelines, and recommendation engines directly on the device.
+
+**Enable VSS:**
+
+Add `"vss"` to your extensions list in `package.json` (bare) or `app.json` plugin (Expo):
+
+```json
+{
+  "react-native-duckdb": {
+    "build": {
+      "extensions": ["core_functions", "parquet", "json", "vss"]
+    }
+  }
+}
+```
+
+Then load the extension in SQL:
+
+```sql
+LOAD 'vss';
+```
+
+**Creating Tables with Vector Columns:**
+
+DuckDB's fixed-size `FLOAT[N]` array type stores embedding vectors:
+
+```sql
+CREATE TABLE embeddings (id INTEGER, label VARCHAR, vec FLOAT[384]);
+INSERT INTO embeddings VALUES (1, 'hello world', [0.1, 0.2, ...]::FLOAT[384]);
+```
+
+**Creating HNSW Indexes:**
+
+```sql
+-- Default metric (L2 / euclidean distance)
+CREATE INDEX idx ON embeddings USING HNSW (vec);
+
+-- Cosine distance (recommended for normalized embeddings)
+CREATE INDEX idx_cosine ON embeddings USING HNSW (vec) WITH (metric = 'cosine');
+
+-- Inner product (for maximum inner product search)
+CREATE INDEX idx_ip ON embeddings USING HNSW (vec) WITH (metric = 'ip');
+```
+
+**Querying Nearest Neighbors:**
+
+Use the distance function matching your index metric, with `ORDER BY ... LIMIT N`:
+
+```sql
+-- Cosine distance (with cosine index)
+SELECT id, label, array_cosine_distance(vec, [0.1, 0.2, ...]::FLOAT[384]) AS distance
+FROM embeddings
+ORDER BY distance LIMIT 10;
+
+-- L2 / euclidean distance (with l2sq index)
+SELECT id, label, array_distance(vec, [0.1, 0.2, ...]::FLOAT[384]) AS distance
+FROM embeddings
+ORDER BY distance LIMIT 10;
+
+-- Negative inner product (with ip index)
+SELECT id, label, array_negative_inner_product(vec, [0.1, 0.2, ...]::FLOAT[384]) AS distance
+FROM embeddings
+ORDER BY distance LIMIT 10;
+```
+
+**Verifying HNSW Index Usage:**
+
+Use `EXPLAIN` to confirm the query plan includes `HNSW_INDEX_SCAN`:
+
+```sql
+EXPLAIN SELECT id FROM embeddings
+ORDER BY array_cosine_distance(vec, [0.1, 0.2, ...]::FLOAT[384]) LIMIT 10;
+-- Look for HNSW_INDEX_SCAN in the output
+```
+
+**Distance Metrics Reference:**
+
+| Metric | SQL Function | Index Parameter | Best For |
+|--------|-------------|-----------------|----------|
+| Cosine | `array_cosine_distance(a, b)` | `metric = 'cosine'` | Normalized embeddings (sentence-transformers, OpenAI) |
+| L2 (Euclidean) | `array_distance(a, b)` | `metric = 'l2sq'` | Raw feature vectors, image embeddings |
+| Inner Product | `array_negative_inner_product(a, b)` | `metric = 'ip'` | Maximum inner product search, dot-product similarity |
+
+**Use Cases:**
+
+**Semantic Search** — Store document embeddings from sentence-transformers or OpenAI, then find the most semantically similar documents to a query:
+
+```sql
+SELECT id, title, array_cosine_distance(embedding, $query_vec) AS distance
+FROM documents
+ORDER BY distance LIMIT 10;
+```
+
+**On-Device RAG** — Retrieve relevant context chunks for local LLM inference without network calls. Store your knowledge base embeddings on-device and query them with zero latency:
+
+```sql
+SELECT chunk_text FROM knowledge_base
+ORDER BY array_cosine_distance(embedding, $question_vec) LIMIT 5;
+```
+
+**Recommendation Engine** — Find similar items based on feature vectors. Product recommendations, content suggestions, or user-to-user similarity — all computed locally:
+
+```sql
+SELECT product_id, name, array_distance(features, $user_vec) AS distance
+FROM products
+ORDER BY distance LIMIT 20;
+```
+
+**Limitations:**
+
+- **HNSW indexes are in-memory only** — Indexes are not persisted across database close. They must be recreated each session. For mobile use with in-memory databases, this is a non-issue.
+- **LIMIT clause required** — HNSW index acceleration only activates when the query includes `ORDER BY <distance_function>(...) LIMIT N`. Without `LIMIT`, DuckDB falls back to brute-force scanning.
+- **Distance function must match index metric** — A cosine index only accelerates `array_cosine_distance()` queries. Using `array_distance()` on a cosine index will fall back to brute-force.
+- **Fixed-size arrays only** — Vector columns must use `FLOAT[N]` (fixed-size), not `FLOAT[]` (variable-size).
+
+**Binary Size Impact:**
+
+Minimal — VSS is header-only C++ (usearch + simsimd libraries vendored in the extension). No external system dependencies.
 
 ### Runtime Extension Loading
 

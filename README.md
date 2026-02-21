@@ -14,6 +14,7 @@ High-performance DuckDB bindings for React Native, powered by [Nitro Modules](ht
 - **Batch execution** — Execute multiple commands atomically
 - **Full type support** — All DuckDB types including HUGEINT, DECIMAL, TIMESTAMP, ARRAY, MAP, STRUCT, UUID
 - **Full-text search** — BM25 ranked search with 27 language stemmers via the fts extension
+- **Vector similarity search** — HNSW-indexed nearest-neighbor queries for on-device semantic search, RAG, and recommendations via the vss extension
 - **Remote data** — Query Parquet, CSV, and JSON files over HTTPS via the httpfs extension
 
 ## Installation
@@ -117,7 +118,23 @@ const results = db.executeSync(`
 `)
 ```
 
-See [docs/API.md](docs/API.md) for the full extension reference, available extensions, SQLite scanner usage, FTS configuration, and file query examples.
+**Vector similarity search** (requires `vss` extension):
+
+```ts
+// Store embeddings and find nearest neighbors
+db.executeSync("LOAD 'vss'")
+db.executeSync('CREATE TABLE docs (id INTEGER, title VARCHAR, embedding FLOAT[384])')
+db.executeSync("INSERT INTO docs VALUES (1, 'Hello world', [0.1, 0.2, ...]::FLOAT[384])")
+db.executeSync("CREATE INDEX idx ON docs USING HNSW (embedding) WITH (metric = 'cosine')")
+
+// Query nearest neighbors — HNSW index accelerates ORDER BY + LIMIT
+const similar = db.executeSync(`
+  SELECT id, title, array_cosine_distance(embedding, [0.15, 0.25, ...]::FLOAT[384]) AS distance
+  FROM docs ORDER BY distance LIMIT 10
+`)
+```
+
+See [docs/API.md](docs/API.md) for the full extension reference, available extensions, SQLite scanner usage, FTS configuration, VSS distance metrics, and file query examples.
 
 ## Expo Setup
 
