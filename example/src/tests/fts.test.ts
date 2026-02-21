@@ -8,7 +8,7 @@ const books = require('../data/books.json')
 // during index creation overflow int64, causing "Information loss on integer
 // cast" errors. Root cause: fts_indexing.cpp uses `SELECT rowid AS docid`
 // and Android in-memory rowids can exceed int64 max.
-// Upstream: https://github.com/duckdb/duckdb-fts/issues (not yet filed)
+// Upstream: https://github.com/duckdb/duckdb-fts/issues/22
 // Detect this at runtime so affected tests can skip gracefully.
 let ftsIndexingWorks: boolean | null = null
 function canCreateFtsIndex(): boolean {
