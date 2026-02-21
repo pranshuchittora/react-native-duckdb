@@ -68,9 +68,7 @@ The `NPM_TOKEN` secret is scoped to the `npm` environment, not available as a ge
 
 The entire git history (94 commits at time of initial release) has been audited — zero credentials, API keys, or tokens in any commit.
 
-### AI Authorship Transparency
-
-This repository was largely written using AI (Claude via the [Get Shit Done](https://github.com/pranshuchittora/get-shit-done) framework). Every architectural decision — from the C++ API surface to memory management patterns — was made by a human.
+### Release Safeguards
 
 The release pipeline includes multiple safeguards:
 - **Human approval gate** before every npm publish

@@ -1,6 +1,8 @@
 # Expo Config Plugin Guide
 
-This guide covers the react-native-duckdb Expo config plugin — how it works internally, how to configure it, and how to troubleshoot common issues.
+This guide covers the react-native-duckdb Expo config plugin -- how it works internally, how to configure it, and how to troubleshoot common issues.
+
+For bare React Native projects (no Expo), see [bare-workflow.md](bare-workflow.md).
 
 ## Quick Start
 
@@ -34,7 +36,7 @@ The plugin bridges Expo's JavaScript config with the native DuckDB build pipelin
 4. **`configure-extensions.js` generates** `extension_config_local.cmake` for DuckDB's build system
 5. **DuckDB compiles** with selected extensions statically linked into the native binary
 
-The plugin uses only safe Expo mods (`withGradleProperties` and `createBuildPodfilePropsConfigPlugin`) — no dangerous modifications to native files.
+The plugin uses only safe Expo mods (`withGradleProperties` and `createBuildPodfilePropsConfigPlugin`) -- no dangerous modifications to native files.
 
 ## Configuration
 
@@ -54,16 +56,18 @@ type DuckDBPluginProps = {
 
 | Extension | Description |
 |-----------|-------------|
-| `core_functions` | Essential SQL functions (sum, avg, list_value, uuid, etc.) — **strongly recommended** |
+| `core_functions` | Essential SQL functions (sum, avg, list_value, uuid, etc.) -- **strongly recommended** |
 | `parquet` | Apache Parquet file format support |
 | `json` | JSON file format support |
 | `icu` | Unicode collation and locale-aware text functions |
 | `sqlite_scanner` | Read and write SQLite databases via ATTACH |
+| `httpfs` | Remote file access over HTTPS ([details](remote-data.md)) |
+| `fts` | BM25 full-text search ([details](fts.md)) |
+| `vss` | HNSW vector similarity search ([details](vss.md)) |
 | `autocomplete` | SQL autocomplete suggestions |
 | `tpch` | TPC-H benchmark data generator |
 | `tpcds` | TPC-DS benchmark data generator |
 | `delta` | Delta Lake table format |
-| `httpfs` | Remote file access over HTTPS (requires 64-bit Android ABIs) |
 
 ### Example Configurations
 
@@ -91,7 +95,7 @@ type DuckDBPluginProps = {
 ["react-native-duckdb", { "extensions": ["core_functions", "parquet", "json", "icu", "sqlite_scanner"] }]
 ```
 
-## Extension Flow — Android
+## Extension Flow -- Android
 
 ```
 app.json
@@ -122,7 +126,7 @@ DuckDB CMake build
   └─ Reads extension_config_local.cmake → statically links selected extensions
 ```
 
-## Extension Flow — iOS
+## Extension Flow -- iOS
 
 ```
 app.json
@@ -179,7 +183,7 @@ You can remove the `react-native-duckdb` key from your app's `package.json`:
 -  }
 ```
 
-This is optional — when both exist, the `app.json` config takes priority via the `--extensions` flag, which overrides `package.json` discovery in `configure-extensions.js`.
+This is optional -- when both exist, the `app.json` config takes priority via the `--extensions` flag, which overrides `package.json` discovery in `configure-extensions.js`.
 
 ### Step 3: Regenerate native projects
 
@@ -197,7 +201,7 @@ Verify the extensions appear in the generated files:
 The Expo config plugin **only runs during `expo prebuild`**. It has no effect on bare React Native projects.
 
 - **Expo managed workflow:** Extensions configured in `app.json` → plugin writes property files → build scripts read them
-- **Bare workflow:** Extensions configured in `package.json` → `configure-extensions.js` reads `package.json` directly (unchanged from before)
+- **Bare workflow:** Extensions configured in `package.json` → `configure-extensions.js` reads `package.json` directly. See [bare-workflow.md](bare-workflow.md).
 - **Both configured:** `app.json` takes priority (the `--extensions` flag overrides `package.json` discovery)
 
 If you eject from Expo, the property files written by the plugin remain in your native directories and continue to work. You can also switch to `package.json` config after ejecting.
@@ -209,7 +213,7 @@ If you eject from Expo, the property files written by the plugin remain in your 
 The extension name is not in the valid list. Check for typos:
 
 ```
-Valid: core_functions, parquet, json, icu, sqlite_scanner, autocomplete, tpch, tpcds, delta
+Valid: core_functions, parquet, json, icu, sqlite_scanner, autocomplete, tpch, tpcds, delta, httpfs, fts, vss
 ```
 
 ### Extensions not building after prebuild
@@ -275,7 +279,7 @@ bun run build:plugin
 npx tsc --project plugin/tsconfig.json
 ```
 
-The compiled output in `plugin/build/` is committed to git (despite the `build/` gitignore pattern) because it's needed for npm publish — consumers don't have TypeScript at prebuild time.
+The compiled output in `plugin/build/` is committed to git (despite the `build/` gitignore pattern) because it's needed for npm publish -- consumers don't have TypeScript at prebuild time.
 
 ### Testing
 
@@ -299,10 +303,10 @@ rm -rf /tmp/test-app
 
 ### Architecture Notes
 
-- Uses only **safe Expo mods** — `withGradleProperties` (Android) and `createBuildPodfilePropsConfigPlugin` (iOS). No dangerous mods that modify Podfiles, AppDelegates, or build.gradle directly.
+- Uses only **safe Expo mods** -- `withGradleProperties` (Android) and `createBuildPodfilePropsConfigPlugin` (iOS). No dangerous mods that modify Podfiles, AppDelegates, or build.gradle directly.
 - `createRunOncePlugin` wrapper ensures idempotent execution (safe if user accidentally lists plugin twice).
 - The `propValueGetter` API on `createBuildPodfilePropsConfigPlugin` returns `undefined` to omit the property (not an empty string), so no extensions = no property file entry.
 
 ---
 
-*Part of [react-native-duckdb](../README.md) — see [API Reference](API.md) for the full API.*
+*Part of [react-native-duckdb](../README.md) -- see [API Reference](API.md) for the full API.*
