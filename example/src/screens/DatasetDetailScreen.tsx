@@ -63,7 +63,7 @@ export function DatasetDetailScreen() {
   const getDb = useCallback(() => {
     if (!dbRef.current) {
       const db = HybridDuckDB.open(':memory:', {})
-      try { db.executeSync('LOAD httpfs') } catch { /* already loaded or will fail on query */ }
+      try { db.executeSync('LOAD httpfs') } catch {}
       dbRef.current = db
     }
     return dbRef.current
@@ -81,17 +81,24 @@ export function DatasetDetailScreen() {
     setSchemaLoading(true)
     setSchemaError(null)
 
-    try {
-      const db = getDb()
-      const describeSql = `DESCRIBE SELECT * FROM '${dataset.parquetPath}' LIMIT 0`
-      const result = db.executeSync(describeSql)
-      const records = result.toRows() as unknown as SchemaColumn[]
-      setSchema(records)
-    } catch (e: any) {
-      setSchemaError(e?.message ?? 'Failed to load schema')
-    } finally {
-      setSchemaLoading(false)
-    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const db = getDb()
+        const describeSql = `DESCRIBE SELECT * FROM '${dataset.parquetPath}' LIMIT 0`
+        const result = await db.execute(describeSql)
+        if (cancelled) return
+        const records = result.toRows() as unknown as SchemaColumn[]
+        setSchema(records)
+      } catch (e: any) {
+        if (cancelled) return
+        setSchemaError(e?.message ?? 'Failed to load schema')
+      } finally {
+        if (!cancelled) setSchemaLoading(false)
+      }
+    })()
+
+    return () => { cancelled = true }
   }, [dataset.parquetPath, getDb])
 
   const executeQuery = useCallback(async (sql: string) => {
