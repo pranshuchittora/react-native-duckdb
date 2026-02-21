@@ -3,37 +3,46 @@ import {
   View,
   Text,
   TextInput,
-  FlatList,
+  ScrollView,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
+  ActivityIndicator,
   Platform,
   Linking,
 } from 'react-native'
 import { HybridDuckDB } from 'react-native-duckdb'
+import { useTheme } from '../theme'
+import { ResultTable } from '../components/ResultTable'
+import { SQLHighlighter } from '../components/SQLHighlighter'
+import { QueryStatusBar } from '../components/StatusBar'
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 
 const books = require('../data/books.json')
 
-interface BookResult {
-  id: string
-  title: string
-  description: string
-  author: string
-  language: string
-  score: number | null
-}
+const ACCENT = '#00C770'
 
-interface Props {
-  onBack?: () => void
-}
+type SearchMode = 'match' | 'prefix' | 'phrase'
 
-export function FTSExplorerScreen({ onBack }: Props = {}) {
+export function FTSExplorerScreen() {
+  const { colors, isDark } = useTheme()
   const [searchQuery, setSearchQuery] = useState('')
-  const [results, setResults] = useState<BookResult[]>([])
+  const [searchMode, setSearchMode] = useState<SearchMode>('match')
+  const [columns, setColumns] = useState<string[]>([])
+  const [rows, setRows] = useState<any[][]>([])
   const [isReady, setIsReady] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [executionTimeMs, setExecutionTimeMs] = useState<number | undefined>()
+  const [showSetupSql, setShowSetupSql] = useState(false)
+  const [showQuerySql, setShowQuerySql] = useState(false)
+  const [lastSql, setLastSql] = useState('')
   const dbRef = useRef<ReturnType<typeof HybridDuckDB.open> | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const setupSql = `LOAD 'fts';
+CREATE TABLE books (id VARCHAR, title VARCHAR, description VARCHAR, author VARCHAR, language VARCHAR);
+-- Insert ${books.length} books from books.json
+PRAGMA create_fts_index('books', 'id', 'title', 'description', stemmer='english');`
 
   useEffect(() => {
     try {
@@ -55,23 +64,18 @@ export function FTSExplorerScreen({ onBack }: Props = {}) {
         "PRAGMA create_fts_index('books', 'id', 'title', 'description', stemmer='english')"
       )
 
-      // Show all books initially
       const all = db.executeSync(
         'SELECT id, title, description, author, language FROM books ORDER BY id'
       )
-      setResults(
-        all.toRows().map((r: any) => ({
-          id: r.id as string,
-          title: r.title as string,
-          description: r.description as string,
-          author: r.author as string,
-          language: r.language as string,
-          score: null,
-        }))
-      )
+      const records = all.toRows()
+      const cols = all.columnNames
+      setColumns(cols)
+      setRows(records.map((r: any) => cols.map((c) => r[c])))
       setIsReady(true)
+      setIsInitializing(false)
     } catch (e: any) {
       setError(String(e.message || e))
+      setIsInitializing(false)
     }
 
     return () => {
@@ -85,375 +89,444 @@ export function FTSExplorerScreen({ onBack }: Props = {}) {
     }
   }, [])
 
-  const executeSearch = useCallback((query: string) => {
-    const db = dbRef.current
-    if (!db) return
+  const buildSearchSql = useCallback(
+    (query: string, mode: SearchMode): string => {
+      const escaped = query.toLowerCase().replace(/'/g, "''")
+      let term = escaped
+      if (mode === 'prefix') term = escaped + '*'
+      else if (mode === 'phrase') term = `"${escaped}"`
+      return `SELECT id, title, description, author, language, score
+FROM (
+  SELECT *, fts_main_books.match_bm25(id, '${term}') AS score
+  FROM books
+) sq
+WHERE score IS NOT NULL
+ORDER BY score DESC`
+    },
+    []
+  )
 
-    try {
-      if (!query.trim()) {
-        const all = db.executeSync(
-          'SELECT id, title, description, author, language FROM books ORDER BY id'
-        )
-        setResults(
-          all.toRows().map((r: any) => ({
-            id: r.id as string,
-            title: r.title as string,
-            description: r.description as string,
-            author: r.author as string,
-            language: r.language as string,
-            score: null,
-          }))
-        )
-        return
+  const executeSearch = useCallback(
+    (query: string, mode: SearchMode) => {
+      const db = dbRef.current
+      if (!db) return
+
+      try {
+        if (!query.trim()) {
+          const sql = 'SELECT id, title, description, author, language FROM books ORDER BY id'
+          setLastSql(sql)
+          const start = Date.now()
+          const all = db.executeSync(sql)
+          setExecutionTimeMs(Date.now() - start)
+          const records = all.toRows()
+          const cols = all.columnNames
+          setColumns(cols)
+          setRows(records.map((r: any) => cols.map((c) => r[c])))
+          return
+        }
+
+        const sql = buildSearchSql(query, mode)
+        setLastSql(sql)
+        const start = Date.now()
+        const result = db.executeSync(sql)
+        setExecutionTimeMs(Date.now() - start)
+        const records = result.toRows()
+        const cols = result.columnNames
+        setColumns(cols)
+        setRows(records.map((r: any) => cols.map((c) => r[c])))
+      } catch (_) {
+        setColumns([])
+        setRows([])
       }
-
-      const escapedQuery = query.toLowerCase().replace(/'/g, "''")
-      const result = db.executeSync(
-        `SELECT id, title, description, author, language, score FROM (SELECT *, fts_main_books.match_bm25(id, '${escapedQuery}') AS score FROM books) sq WHERE score IS NOT NULL ORDER BY score DESC`
-      )
-      setResults(
-        result.toRows().map((r: any) => ({
-          id: r.id as string,
-          title: r.title as string,
-          description: r.description as string,
-          author: r.author as string,
-          language: r.language as string,
-          score: r.score as number,
-        }))
-      )
-    } catch (_) {
-      setResults([])
-    }
-  }, [])
+    },
+    [buildSearchSql]
+  )
 
   const onChangeText = useCallback(
     (text: string) => {
       setSearchQuery(text)
       if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => executeSearch(text), 300)
+      timerRef.current = setTimeout(() => executeSearch(text, searchMode), 300)
     },
-    [executeSearch]
+    [executeSearch, searchMode]
   )
 
-  const renderItem = useCallback(({ item }: { item: BookResult }) => {
-    const desc =
-      item.description.length > 120
-        ? item.description.slice(0, 120) + '...'
-        : item.description
-    return (
-      <View style={styles.resultCard}>
-        <View style={styles.resultHeader}>
-          <Text style={styles.resultTitle} numberOfLines={1}>
-            {item.title}
-          </Text>
-          {item.score !== null && (
-            <View style={styles.scorePill}>
-              <Text style={styles.scoreText}>{item.score.toFixed(3)}</Text>
-            </View>
-          )}
-        </View>
-        <Text style={styles.resultDesc} numberOfLines={2}>
-          {desc}
-        </Text>
-        <View style={styles.resultFooter}>
-          <Text style={styles.resultAuthor}>{item.author}</Text>
-          <View
-            style={[
-              styles.langBadge,
-              item.language === 'fr' ? styles.langBadgeFr : styles.langBadgeEn,
-            ]}>
-            <Text
-              style={[
-                styles.langBadgeText,
-                item.language === 'fr'
-                  ? styles.langBadgeTextFr
-                  : styles.langBadgeTextEn,
-              ]}>
-              {item.language.toUpperCase()}
-            </Text>
-          </View>
-        </View>
-      </View>
-    )
-  }, [])
+  const onModeChange = useCallback(
+    (mode: SearchMode) => {
+      setSearchMode(mode)
+      if (searchQuery.trim()) executeSearch(searchQuery, mode)
+    },
+    [searchQuery, executeSearch]
+  )
+
+  const isRowidBug = error?.includes('Information loss on integer cast')
 
   if (error) {
-    const isRowidBug = error.includes('Information loss on integer cast')
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.headerBar}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>FTS Explorer</Text>
-          <View style={styles.headerSpacer} />
-        </View>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.errorContainer}>
           {isRowidBug ? (
             <>
-              <Text style={styles.errorEmoji}>🐛</Text>
-              <Text style={styles.errorTitle}>
+              <MaterialCommunityIcons name="bug" size={48} color={colors.error} />
+              <Text style={[styles.errorTitle, { color: colors.text }]}>
                 FTS Unavailable on Android
               </Text>
-              <Text style={styles.errorDesc}>
+              <Text style={[styles.errorDesc, { color: colors.textSecondary }]}>
                 DuckDB's FTS extension has a known bug where internal rowid
                 values overflow on Android, preventing index creation.
               </Text>
-              <Text style={styles.errorDesc}>
+              <Text style={[styles.errorDesc, { color: colors.textSecondary }]}>
                 The stem() function and FTS on iOS work correctly. This is an
                 upstream issue being tracked.
               </Text>
               <TouchableOpacity
                 onPress={() =>
-                  Linking.openURL(
-                    'https://github.com/duckdb/duckdb-fts/issues/24'
-                  )
+                  Linking.openURL('https://github.com/duckdb/duckdb-fts/issues/24')
                 }
-                style={styles.issueLink}>
-                <Text style={styles.issueLinkText}>
+                style={[styles.issueLink, { backgroundColor: ACCENT + '20' }]}>
+                <Text style={[styles.issueLinkText, { color: ACCENT }]}>
                   duckdb/duckdb-fts#24
                 </Text>
               </TouchableOpacity>
             </>
           ) : (
-            <Text style={styles.errorText}>Error: {error}</Text>
+            <Text style={[styles.errorText, { color: colors.error }]}>Error: {error}</Text>
           )}
         </View>
-      </SafeAreaView>
+      </View>
     )
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.headerBar}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>FTS Explorer</Text>
-        <View style={styles.headerSpacer} />
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.scrollContent}>
+      {/* Header */}
+      <View style={styles.headerSection}>
+        <View style={[styles.accentBar, { backgroundColor: ACCENT }]} />
+        <View style={styles.headerText}>
+          <Text style={[styles.title, { color: colors.text }]}>Full-Text Search</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            BM25-ranked text search powered by DuckDB FTS extension
+          </Text>
+        </View>
       </View>
-      <View style={styles.infoBar}>
-        <Text style={styles.infoText}>
-          {books.length} books · stemmer: english
-        </Text>
-        <Text style={styles.resultCount}>
-          {results.length} result{results.length !== 1 ? 's' : ''}
-        </Text>
-      </View>
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search books..."
-          placeholderTextColor="#999"
-          value={searchQuery}
-          onChangeText={onChangeText}
-          editable={isReady}
-          autoCorrect={false}
-          autoCapitalize="none"
-          returnKeyType="search"
-        />
-      </View>
-      <FlatList
-        data={results}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              {isReady ? 'No results found' : 'Loading...'}
+
+      {/* Setup Card */}
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.cardHeader}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>Setup</Text>
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: isReady ? ACCENT + '20' : colors.surfaceAlt },
+            ]}>
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: isReady ? ACCENT : colors.textSecondary },
+              ]}
+            />
+            <Text
+              style={[
+                styles.statusText,
+                { color: isReady ? ACCENT : colors.textSecondary },
+              ]}>
+              {isInitializing ? 'Initializing...' : isReady ? 'Ready' : 'Not initialized'}
             </Text>
           </View>
-        }
-      />
-    </SafeAreaView>
+        </View>
+        {isInitializing && <ActivityIndicator color={ACCENT} style={styles.loader} />}
+        <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+          {books.length} books loaded · stemmer: english
+        </Text>
+        <TouchableOpacity
+          onPress={() => setShowSetupSql(!showSetupSql)}
+          style={styles.sqlToggle}>
+          <MaterialCommunityIcons
+            name={showSetupSql ? 'chevron-up' : 'chevron-down'}
+            size={18}
+            color={colors.textSecondary}
+          />
+          <Text style={[styles.sqlToggleText, { color: colors.textSecondary }]}>
+            {showSetupSql ? 'Hide' : 'Show'} Setup SQL
+          </Text>
+        </TouchableOpacity>
+        {showSetupSql && (
+          <View style={[styles.sqlPreview, { backgroundColor: colors.surfaceAlt }]}>
+            <SQLHighlighter sql={setupSql} />
+          </View>
+        )}
+      </View>
+
+      {/* Search Section */}
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>Search</Text>
+        <View style={[styles.searchInputWrap, { borderColor: colors.border, backgroundColor: colors.background }]}>
+          <MaterialCommunityIcons name="magnify" size={20} color={colors.textSecondary} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.text }]}
+            placeholder="Search books..."
+            placeholderTextColor={colors.textSecondary}
+            value={searchQuery}
+            onChangeText={onChangeText}
+            editable={isReady}
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+        </View>
+
+        {/* Search mode selector */}
+        <View style={styles.modeRow}>
+          {(['match', 'prefix', 'phrase'] as SearchMode[]).map((mode) => (
+            <TouchableOpacity
+              key={mode}
+              style={[
+                styles.modeButton,
+                {
+                  backgroundColor: searchMode === mode ? ACCENT : 'transparent',
+                  borderColor: searchMode === mode ? ACCENT : colors.border,
+                },
+              ]}
+              onPress={() => onModeChange(mode)}>
+              <Text
+                style={[
+                  styles.modeText,
+                  { color: searchMode === mode ? '#fff' : colors.textSecondary },
+                ]}>
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.searchButton, { backgroundColor: ACCENT }]}
+          onPress={() => executeSearch(searchQuery, searchMode)}
+          disabled={!isReady}>
+          <MaterialCommunityIcons name="magnify" size={18} color="#fff" />
+          <Text style={styles.searchButtonText}>Search</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Results */}
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.cardHeader}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>Results</Text>
+          <Text style={[styles.resultCount, { color: colors.textSecondary }]}>
+            {rows.length} result{rows.length !== 1 ? 's' : ''}
+          </Text>
+        </View>
+
+        {rows.length > 0 ? (
+          <>
+            <ResultTable columns={columns} rows={rows} rowCount={rows.length} />
+            <View style={styles.statusBarWrap}>
+              <QueryStatusBar executionTimeMs={executionTimeMs} rowCount={rows.length} />
+            </View>
+          </>
+        ) : (
+          <View style={styles.emptyState}>
+            <MaterialCommunityIcons name="text-search" size={32} color={colors.textSecondary} />
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              {isReady ? 'Enter a search term above' : 'Loading...'}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* SQL Preview */}
+      {lastSql !== '' && (
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <TouchableOpacity
+            onPress={() => setShowQuerySql(!showQuerySql)}
+            style={styles.sqlToggle}>
+            <MaterialCommunityIcons
+              name={showQuerySql ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={colors.textSecondary}
+            />
+            <Text style={[styles.sqlToggleText, { color: colors.textSecondary }]}>
+              {showQuerySql ? 'Hide' : 'Show'} Query SQL
+            </Text>
+          </TouchableOpacity>
+          {showQuerySql && (
+            <View style={[styles.sqlPreview, { backgroundColor: colors.surfaceAlt }]}>
+              <SQLHighlighter sql={lastSql} />
+            </View>
+          )}
+        </View>
+      )}
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
   },
-  headerBar: {
+  scrollContent: {
+    padding: 16,
+    gap: 16,
+  },
+  headerSection: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e0e0e0',
+    alignItems: 'flex-start',
+    gap: 12,
   },
-  backButton: {
-    paddingRight: 12,
+  accentBar: {
+    width: 4,
+    borderRadius: 2,
+    alignSelf: 'stretch',
+    minHeight: 40,
   },
-  backText: {
-    fontSize: 16,
-    color: '#E65100',
-    fontWeight: '600',
-  },
-  headerTitle: {
+  headerText: {
     flex: 1,
-    fontSize: 20,
+  },
+  title: {
+    fontSize: 22,
     fontWeight: '700',
-    color: '#212121',
-    textAlign: 'center',
   },
-  headerSpacer: {
-    width: 60,
+  subtitle: {
+    fontSize: 13,
+    marginTop: 4,
+    lineHeight: 18,
   },
-  infoBar: {
+  card: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 16,
+    gap: 12,
+  },
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#FFF3E0',
+    alignItems: 'center',
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  loader: {
+    alignSelf: 'flex-start',
   },
   infoText: {
     fontSize: 12,
-    color: '#E65100',
+  },
+  sqlToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  sqlToggleText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  sqlPreview: {
+    borderRadius: 6,
+    padding: 12,
+  },
+  searchInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: 42,
+    fontSize: 15,
+  },
+  modeRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  modeButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  modeText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  searchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+  },
+  searchButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
   resultCount: {
     fontSize: 12,
-    color: '#E65100',
-    fontWeight: '600',
   },
-  searchContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
+  statusBarWrap: {
+    marginTop: 4,
   },
-  searchInput: {
-    height: 42,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: '#212121',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  listContent: {
-    paddingVertical: 8,
-  },
-  resultCard: {
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginVertical: 4,
-    borderRadius: 8,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  resultHeader: {
-    flexDirection: 'row',
+  emptyState: {
     alignItems: 'center',
-    marginBottom: 4,
-  },
-  resultTitle: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#212121',
-  },
-  scorePill: {
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginLeft: 8,
-  },
-  scoreText: {
-    fontSize: 11,
-    color: '#E65100',
-    fontWeight: '600',
-  },
-  resultDesc: {
-    fontSize: 13,
-    color: '#666',
-    lineHeight: 18,
-    marginBottom: 6,
-  },
-  resultFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  resultAuthor: {
-    fontSize: 12,
-    color: '#999',
-  },
-  langBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 3,
-  },
-  langBadgeEn: {
-    backgroundColor: '#E3F2FD',
-  },
-  langBadgeFr: {
-    backgroundColor: '#FCE4EC',
-  },
-  langBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  langBadgeTextEn: {
-    color: '#1565C0',
-  },
-  langBadgeTextFr: {
-    color: '#C62828',
-  },
-  emptyContainer: {
-    paddingVertical: 40,
-    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 8,
   },
   emptyText: {
-    fontSize: 15,
-    color: '#999',
+    fontSize: 14,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
-  },
-  errorEmoji: {
-    fontSize: 48,
-    marginBottom: 16,
+    gap: 12,
   },
   errorTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#212121',
-    marginBottom: 12,
     textAlign: 'center',
   },
   errorDesc: {
     fontSize: 14,
-    color: '#666',
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 8,
   },
   issueLink: {
-    marginTop: 12,
-    backgroundColor: '#FFF3E0',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
+    marginTop: 4,
   },
   issueLinkText: {
     fontSize: 14,
-    color: '#E65100',
     fontWeight: '600',
   },
   errorText: {
     fontSize: 14,
-    color: '#F44336',
     textAlign: 'center',
   },
 })

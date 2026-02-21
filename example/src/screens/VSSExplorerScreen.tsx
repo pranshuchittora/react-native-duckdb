@@ -4,14 +4,19 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native'
 import { HybridDuckDB } from 'react-native-duckdb'
+import { useTheme } from '../theme'
+import { ResultTable } from '../components/ResultTable'
+import { SQLHighlighter } from '../components/SQLHighlighter'
+import { QueryStatusBar } from '../components/StatusBar'
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 
 const NUM_VECTORS = 200
 const DIMS = 128
+const ACCENT = '#7D66FF'
 
 const CLUSTERS: Record<string, number[]> = {
   Fruit: [1, 0.8, 0.6, 0.4],
@@ -34,47 +39,13 @@ function vecLiteral(vec: number[]): string {
   return '[' + vec.map((v) => v.toFixed(6)).join(',') + ']::FLOAT[' + DIMS + ']'
 }
 
-interface SearchResult {
-  id: number
-  label: string
-  distance: number
-}
-
-interface Props {
-  onBack?: () => void
-}
-
 const LABELS = [
-  'fruit: apple',
-  'fruit: banana',
-  'fruit: cherry',
-  'fruit: grape',
-  'fruit: mango',
-  'fruit: orange',
-  'fruit: peach',
-  'fruit: pear',
-  'fruit: plum',
-  'fruit: kiwi',
-  'color: red',
-  'color: blue',
-  'color: green',
-  'color: yellow',
-  'color: purple',
-  'color: orange',
-  'color: pink',
-  'color: teal',
-  'color: white',
-  'color: black',
-  'animal: cat',
-  'animal: dog',
-  'animal: bird',
-  'animal: fish',
-  'animal: horse',
-  'animal: bear',
-  'animal: wolf',
-  'animal: deer',
-  'animal: fox',
-  'animal: owl',
+  'fruit: apple', 'fruit: banana', 'fruit: cherry', 'fruit: grape', 'fruit: mango',
+  'fruit: orange', 'fruit: peach', 'fruit: pear', 'fruit: plum', 'fruit: kiwi',
+  'color: red', 'color: blue', 'color: green', 'color: yellow', 'color: purple',
+  'color: orange', 'color: pink', 'color: teal', 'color: white', 'color: black',
+  'animal: cat', 'animal: dog', 'animal: bird', 'animal: fish', 'animal: horse',
+  'animal: bear', 'animal: wolf', 'animal: deer', 'animal: fox', 'animal: owl',
 ]
 
 function labelSeed(label: string): number {
@@ -85,16 +56,57 @@ function labelSeed(label: string): number {
   return Math.abs(h) % 1000
 }
 
-export function VSSExplorerScreen({ onBack }: Props = {}) {
+type DistanceMetric = 'cosine' | 'l2' | 'ip'
+const TOP_K_OPTIONS = [3, 5, 10, 20]
+
+const METRIC_INFO: Record<DistanceMetric, { title: string; desc: string; formula: string }> = {
+  cosine: {
+    title: 'Cosine Distance',
+    desc: 'Measures angle between vectors. Best for normalized embeddings (e.g., sentence-transformers). Range: 0 (identical) to 2 (opposite).',
+    formula: 'cos_dist(a,b) = 1 - (a·b / |a||b|)',
+  },
+  l2: {
+    title: 'L2 (Euclidean)',
+    desc: 'Measures straight-line distance. Best when magnitude matters. Range: 0 (identical) to infinity.',
+    formula: 'l2(a,b) = sqrt(sum((a_i - b_i)^2))',
+  },
+  ip: {
+    title: 'Inner Product',
+    desc: 'Dot product of vectors. Best for maximum inner product search (MIPS). Higher = more similar.',
+    formula: 'ip(a,b) = -sum(a_i * b_i)',
+  },
+}
+
+const METRIC_SQL_FN: Record<DistanceMetric, string> = {
+  cosine: 'array_cosine_distance',
+  l2: 'array_distance',
+  ip: 'array_negative_inner_product',
+}
+
+export function VSSExplorerScreen() {
+  const { colors, isDark } = useTheme()
   const [isReady, setIsReady] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeQuery, setActiveQuery] = useState<string>('Fruit')
-  const [cosineResults, setCosineResults] = useState<SearchResult[]>([])
-  const [l2Results, setL2Results] = useState<SearchResult[]>([])
-  const [ipResults, setIpResults] = useState<SearchResult[]>([])
-  const [expandedVector, setExpandedVector] = useState<string | null>(null)
-  const [vectorData, setVectorData] = useState<Record<string, number[]>>({})
+  const [activeCluster, setActiveCluster] = useState<string>('Fruit')
+  const [metric, setMetric] = useState<DistanceMetric>('cosine')
+  const [topK, setTopK] = useState(5)
+  const [columns, setColumns] = useState<string[]>([])
+  const [rows, setRows] = useState<any[][]>([])
+  const [distances, setDistances] = useState<number[]>([])
+  const [executionTimeMs, setExecutionTimeMs] = useState<number | undefined>()
+  const [lastSql, setLastSql] = useState('')
+  const [showSetupSql, setShowSetupSql] = useState(false)
+  const [showQuerySql, setShowQuerySql] = useState(false)
+  const [expandedMetric, setExpandedMetric] = useState<DistanceMetric | null>(null)
   const dbRef = useRef<ReturnType<typeof HybridDuckDB.open> | null>(null)
+
+  const setupSql = `LOAD 'vss';
+CREATE TABLE embeddings (id INTEGER, label VARCHAR, vec FLOAT[${DIMS}]);
+-- Insert ${NUM_VECTORS} vectors with deterministic trig-based seeds
+CREATE INDEX idx_cosine ON embeddings USING HNSW (vec) WITH (metric = 'cosine');
+CREATE INDEX idx_l2 ON embeddings USING HNSW (vec) WITH (metric = 'l2sq');
+CREATE INDEX idx_ip ON embeddings USING HNSW (vec) WITH (metric = 'ip');`
 
   useEffect(() => {
     try {
@@ -103,44 +115,28 @@ export function VSSExplorerScreen({ onBack }: Props = {}) {
 
       db.executeSync("LOAD 'vss'")
       db.executeSync(
-        'CREATE TABLE embeddings (id INTEGER, label VARCHAR, vec FLOAT[' +
-          DIMS +
-          '])'
+        'CREATE TABLE embeddings (id INTEGER, label VARCHAR, vec FLOAT[' + DIMS + '])'
       )
 
-      // Insert labeled vectors with deterministic trig seeds
-      const allLabels: string[] = []
       for (let i = 0; i < NUM_VECTORS; i++) {
         const label = LABELS[i % LABELS.length]
-        allLabels.push(label)
         const seed = labelSeed(label) + Math.floor(i / LABELS.length) * 7
         const vec = makeVector(seed)
         db.executeSync(
-          "INSERT INTO embeddings VALUES (" +
-            i +
-            ", '" +
-            label +
-            "', " +
-            vecLiteral(vec) +
-            ')'
+          "INSERT INTO embeddings VALUES (" + i + ", '" + label + "', " + vecLiteral(vec) + ')'
         )
       }
 
-      // Create three HNSW indexes — one per metric
-      db.executeSync(
-        "CREATE INDEX idx_cosine ON embeddings USING HNSW (vec) WITH (metric = 'cosine')"
-      )
-      db.executeSync(
-        "CREATE INDEX idx_l2 ON embeddings USING HNSW (vec) WITH (metric = 'l2sq')"
-      )
-      db.executeSync(
-        "CREATE INDEX idx_ip ON embeddings USING HNSW (vec) WITH (metric = 'ip')"
-      )
+      db.executeSync("CREATE INDEX idx_cosine ON embeddings USING HNSW (vec) WITH (metric = 'cosine')")
+      db.executeSync("CREATE INDEX idx_l2 ON embeddings USING HNSW (vec) WITH (metric = 'l2sq')")
+      db.executeSync("CREATE INDEX idx_ip ON embeddings USING HNSW (vec) WITH (metric = 'ip')")
 
       setIsReady(true)
-      runQuery(db, 'Fruit')
+      setIsInitializing(false)
+      runQuery(db, 'Fruit', 'cosine', 5)
     } catch (e: any) {
       setError(String(e.message || e))
+      setIsInitializing(false)
     }
 
     return () => {
@@ -153,402 +149,547 @@ export function VSSExplorerScreen({ onBack }: Props = {}) {
     }
   }, [])
 
+  const buildQueryVector = useCallback((cluster: string): number[] => {
+    const seeds = CLUSTERS[cluster]
+    if (!seeds) return []
+    const queryVec: number[] = []
+    const baseSeed = seeds[0] * 100 + seeds[1] * 50
+    for (let i = 0; i < DIMS; i++) {
+      queryVec.push(
+        Math.sin(baseSeed * (i + 1) * 0.1) * seeds[0] +
+          Math.cos(baseSeed * 0.3 + i * 0.7) * seeds[1] +
+          Math.sin(i * seeds[2] * 0.5) * 0.3
+      )
+    }
+    return queryVec
+  }, [])
+
   const runQuery = useCallback(
-    (db: ReturnType<typeof HybridDuckDB.open>, cluster: string) => {
-      const seeds = CLUSTERS[cluster]
-      if (!seeds || !db) return
+    (db: ReturnType<typeof HybridDuckDB.open>, cluster: string, m: DistanceMetric, k: number) => {
+      const queryVec = buildQueryVector(cluster)
+      if (!queryVec.length || !db) return
 
-      // Build a query vector using the cluster's characteristic seed pattern
-      const queryVec: number[] = []
-      const baseSeed = seeds[0] * 100 + seeds[1] * 50
-      for (let i = 0; i < DIMS; i++) {
-        queryVec.push(
-          Math.sin(baseSeed * (i + 1) * 0.1) * seeds[0] +
-            Math.cos(baseSeed * 0.3 + i * 0.7) * seeds[1] +
-            Math.sin(i * seeds[2] * 0.5) * 0.3
-        )
-      }
+      const fn = METRIC_SQL_FN[m]
       const qLit = vecLiteral(queryVec)
+      const sql = `SELECT id, label, ${fn}(vec, ${qLit}) AS distance
+FROM embeddings
+ORDER BY distance
+LIMIT ${k}`
 
-      const parseResults = (rows: any[]): SearchResult[] =>
-        rows.map((r: any) => ({
-          id: Number(r.id),
-          label: String(r.label),
-          distance: Number(r.distance),
-        }))
+      setLastSql(sql)
 
       try {
-        const cosine = db.executeSync(
-          'SELECT id, label, array_cosine_distance(vec, ' +
-            qLit +
-            ') AS distance FROM embeddings ORDER BY distance LIMIT 5'
-        )
-        setCosineResults(parseResults(cosine.toRows()))
-
-        const l2 = db.executeSync(
-          'SELECT id, label, array_distance(vec, ' +
-            qLit +
-            ') AS distance FROM embeddings ORDER BY distance LIMIT 5'
-        )
-        setL2Results(parseResults(l2.toRows()))
-
-        const ip = db.executeSync(
-          'SELECT id, label, array_negative_inner_product(vec, ' +
-            qLit +
-            ') AS distance FROM embeddings ORDER BY distance LIMIT 5'
-        )
-        setIpResults(parseResults(ip.toRows()))
-
-        // Fetch vector data for expanded previews
-        const allIds = new Set<number>()
-        ;[cosine, l2, ip].forEach((r) =>
-          r.toRows().forEach((row: any) => allIds.add(Number(row.id)))
-        )
-        const vecMap: Record<string, number[]> = {}
-        for (const id of allIds) {
-          const vr = db.executeSync(
-            'SELECT vec FROM embeddings WHERE id = ' + id
-          )
-          const rows = vr.toRows()
-          if (rows.length > 0) {
-            const raw = rows[0].vec
-            if (typeof raw === 'string') {
-              const nums = raw
-                .replace(/[\[\]]/g, '')
-                .split(',')
-                .map(Number)
-              vecMap[String(id)] = nums
-            } else if (Array.isArray(raw)) {
-              vecMap[String(id)] = raw.map(Number)
-            }
-          }
-        }
-        setVectorData(vecMap)
+        const start = Date.now()
+        const result = db.executeSync(sql)
+        setExecutionTimeMs(Date.now() - start)
+        const records = result.toRows()
+        const cols = result.columnNames
+        setColumns(cols)
+        setRows(records.map((r: any) => cols.map((c) => r[c])))
+        setDistances(records.map((r: any) => Number(r.distance)))
       } catch (e: any) {
         setError(String(e.message || e))
       }
     },
-    []
+    [buildQueryVector]
   )
 
-  const onSelectQuery = useCallback(
+  const onSearch = useCallback(() => {
+    if (dbRef.current) runQuery(dbRef.current, activeCluster, metric, topK)
+  }, [runQuery, activeCluster, metric, topK])
+
+  const onClusterChange = useCallback(
     (cluster: string) => {
-      setActiveQuery(cluster)
-      setExpandedVector(null)
-      if (dbRef.current) runQuery(dbRef.current, cluster)
+      setActiveCluster(cluster)
+      if (dbRef.current) runQuery(dbRef.current, cluster, metric, topK)
     },
-    [runQuery]
+    [runQuery, metric, topK]
   )
 
-  const toggleVector = useCallback(
-    (key: string) => {
-      setExpandedVector(expandedVector === key ? null : key)
+  const onMetricChange = useCallback(
+    (m: DistanceMetric) => {
+      setMetric(m)
+      if (dbRef.current) runQuery(dbRef.current, activeCluster, m, topK)
     },
-    [expandedVector]
+    [runQuery, activeCluster, topK]
   )
 
-  const formatVecPreview = (id: number): string => {
-    const vec = vectorData[String(id)]
-    if (!vec || vec.length === 0) return '...'
-    const preview = vec
-      .slice(0, 4)
-      .map((v) => v.toFixed(3))
-      .join(', ')
-    return '[' + preview + ', ... (' + vec.length + ' dims)]'
-  }
-
-  const renderResultColumn = (
-    title: string,
-    results: SearchResult[],
-    accentColor: string,
-    columnKey: string
-  ) => (
-    <View style={styles.column}>
-      <View style={[styles.columnHeader, { backgroundColor: accentColor + '20' }]}>
-        <Text style={[styles.columnTitle, { color: accentColor }]}>{title}</Text>
-      </View>
-      {results.map((r, i) => {
-        const vecKey = columnKey + '-' + r.id
-        const isExpanded = expandedVector === vecKey
-        return (
-          <TouchableOpacity
-            key={vecKey}
-            style={[styles.resultRow, i % 2 === 0 && styles.resultRowAlt]}
-            onPress={() => toggleVector(vecKey)}
-            activeOpacity={0.7}>
-            <View style={styles.resultContent}>
-              <Text style={styles.resultLabel} numberOfLines={1}>
-                {r.label}
-              </Text>
-              <Text style={styles.resultDistance}>
-                {r.distance.toFixed(4)}
-              </Text>
-            </View>
-            {isExpanded && (
-              <View style={styles.vectorPreview}>
-                <Text style={styles.vectorText}>
-                  {formatVecPreview(r.id)}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        )
-      })}
-    </View>
-  )
+  const maxDist = distances.length > 0 ? Math.max(...distances, 0.001) : 1
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.headerBar}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Vector Search Explorer</Text>
-          <View style={styles.headerSpacer} />
-        </View>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Error: {error}</Text>
+          <MaterialCommunityIcons name="alert-circle" size={48} color={colors.error} />
+          <Text style={[styles.errorTitle, { color: colors.text }]}>VSS Error</Text>
+          <Text style={[styles.errorDesc, { color: colors.textSecondary }]}>{error}</Text>
         </View>
-      </SafeAreaView>
-    )
-  }
-
-  if (!isReady) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.headerBar}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Vector Search Explorer</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4527A0" />
-          <Text style={styles.loadingText}>
-            Building HNSW indexes ({NUM_VECTORS} vectors × {DIMS} dims)...
-          </Text>
-        </View>
-      </SafeAreaView>
+      </View>
     )
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.headerBar}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Vector Search Explorer</Text>
-        <View style={styles.headerSpacer} />
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.scrollContent}>
+      {/* Header */}
+      <View style={styles.headerSection}>
+        <View style={[styles.accentBar, { backgroundColor: ACCENT }]} />
+        <View style={styles.headerText}>
+          <Text style={[styles.title, { color: colors.text }]}>Vector Similarity Search</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            Find similar items using embedding vectors and HNSW indexes
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.queryBar}>
-        <Text style={styles.queryLabel}>Query cluster:</Text>
-        <View style={styles.queryButtons}>
+      {/* Distance Metrics Card */}
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>Distance Metrics</Text>
+        {(['cosine', 'l2', 'ip'] as DistanceMetric[]).map((m) => {
+          const info = METRIC_INFO[m]
+          const isExpanded = expandedMetric === m
+          return (
+            <TouchableOpacity
+              key={m}
+              style={[styles.metricItem, { borderColor: colors.border }]}
+              onPress={() => setExpandedMetric(isExpanded ? null : m)}>
+              <View style={styles.metricHeader}>
+                <Text style={[styles.metricTitle, { color: colors.text }]}>{info.title}</Text>
+                <MaterialCommunityIcons
+                  name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.textSecondary}
+                />
+              </View>
+              {isExpanded && (
+                <View style={styles.metricDetail}>
+                  <Text style={[styles.metricDesc, { color: colors.textSecondary }]}>
+                    {info.desc}
+                  </Text>
+                  <Text style={[styles.metricFormula, { color: ACCENT }]}>{info.formula}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )
+        })}
+      </View>
+
+      {/* Setup Card */}
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.cardHeader}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>Setup</Text>
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: isReady ? ACCENT + '20' : colors.surfaceAlt },
+            ]}>
+            <View
+              style={[styles.statusDot, { backgroundColor: isReady ? ACCENT : colors.textSecondary }]}
+            />
+            <Text
+              style={[styles.statusText, { color: isReady ? ACCENT : colors.textSecondary }]}>
+              {isInitializing ? 'Initializing...' : isReady ? 'Ready' : 'Not initialized'}
+            </Text>
+          </View>
+        </View>
+        {isInitializing && <ActivityIndicator color={ACCENT} style={styles.loader} />}
+        <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+          {NUM_VECTORS} vectors · {DIMS} dimensions · 3 HNSW indexes
+        </Text>
+        <TouchableOpacity
+          onPress={() => setShowSetupSql(!showSetupSql)}
+          style={styles.sqlToggle}>
+          <MaterialCommunityIcons
+            name={showSetupSql ? 'chevron-up' : 'chevron-down'}
+            size={18}
+            color={colors.textSecondary}
+          />
+          <Text style={[styles.sqlToggleText, { color: colors.textSecondary }]}>
+            {showSetupSql ? 'Hide' : 'Show'} Setup SQL
+          </Text>
+        </TouchableOpacity>
+        {showSetupSql && (
+          <View style={[styles.sqlPreview, { backgroundColor: colors.surfaceAlt }]}>
+            <SQLHighlighter sql={setupSql} />
+          </View>
+        )}
+      </View>
+
+      {/* Search Section */}
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>Search</Text>
+
+        {/* Query cluster */}
+        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Query Vector</Text>
+        <View style={styles.chipRow}>
           {Object.keys(CLUSTERS).map((cluster) => (
             <TouchableOpacity
               key={cluster}
               style={[
-                styles.queryButton,
-                activeQuery === cluster && styles.queryButtonActive,
+                styles.chip,
+                {
+                  backgroundColor: activeCluster === cluster ? ACCENT : 'transparent',
+                  borderColor: activeCluster === cluster ? ACCENT : colors.border,
+                },
               ]}
-              onPress={() => onSelectQuery(cluster)}>
+              onPress={() => onClusterChange(cluster)}>
               <Text
                 style={[
-                  styles.queryButtonText,
-                  activeQuery === cluster && styles.queryButtonTextActive,
+                  styles.chipText,
+                  { color: activeCluster === cluster ? '#fff' : colors.textSecondary },
                 ]}>
                 {cluster}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
-      </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}>
-        <View style={styles.columnsContainer}>
-          {renderResultColumn('Cosine', cosineResults, '#4527A0', 'cos')}
-          {renderResultColumn('L2', l2Results, '#1565C0', 'l2')}
-          {renderResultColumn('Inner Product', ipResults, '#2E7D32', 'ip')}
+        {/* Distance metric picker */}
+        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Distance Metric</Text>
+        <View style={styles.chipRow}>
+          {(['cosine', 'l2', 'ip'] as DistanceMetric[]).map((m) => (
+            <TouchableOpacity
+              key={m}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: metric === m ? ACCENT : 'transparent',
+                  borderColor: metric === m ? ACCENT : colors.border,
+                },
+              ]}
+              onPress={() => onMetricChange(m)}>
+              <Text
+                style={[
+                  styles.chipText,
+                  { color: metric === m ? '#fff' : colors.textSecondary },
+                ]}>
+                {m === 'cosine' ? 'Cosine' : m === 'l2' ? 'L2' : 'Inner Product'}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
-      </ScrollView>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          HNSW indexed • {NUM_VECTORS} vectors • {DIMS} dims
-        </Text>
+        {/* Top-K */}
+        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Top-K</Text>
+        <View style={styles.chipRow}>
+          {TOP_K_OPTIONS.map((k) => (
+            <TouchableOpacity
+              key={k}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: topK === k ? ACCENT : 'transparent',
+                  borderColor: topK === k ? ACCENT : colors.border,
+                },
+              ]}
+              onPress={() => {
+                setTopK(k)
+                if (dbRef.current) runQuery(dbRef.current, activeCluster, metric, k)
+              }}>
+              <Text
+                style={[
+                  styles.chipText,
+                  { color: topK === k ? '#fff' : colors.textSecondary },
+                ]}>
+                {k}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.searchButton, { backgroundColor: ACCENT }]}
+          onPress={onSearch}
+          disabled={!isReady}>
+          <MaterialCommunityIcons name="vector-point" size={18} color="#fff" />
+          <Text style={styles.searchButtonText}>Search</Text>
+        </TouchableOpacity>
       </View>
-    </SafeAreaView>
+
+      {/* Results */}
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.cardHeader}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>Results</Text>
+          <Text style={[styles.resultCount, { color: colors.textSecondary }]}>
+            {rows.length} result{rows.length !== 1 ? 's' : ''}
+          </Text>
+        </View>
+
+        {rows.length > 0 ? (
+          <>
+            {/* Distance indicators */}
+            <View style={styles.distanceList}>
+              {rows.map((row, i) => {
+                const dist = distances[i] ?? 0
+                const barWidth = Math.max(5, Math.min(100, (dist / maxDist) * 100))
+                return (
+                  <View key={i} style={[styles.distanceRow, { borderColor: colors.border }]}>
+                    <Text style={[styles.distanceLabel, { color: colors.text }]} numberOfLines={1}>
+                      {row[1]}
+                    </Text>
+                    <View style={styles.distanceBarWrap}>
+                      <View
+                        style={[
+                          styles.distanceBar,
+                          { width: `${barWidth}%`, backgroundColor: ACCENT + '80' },
+                        ]}
+                      />
+                    </View>
+                    <Text style={[styles.distanceValue, { color: colors.textSecondary }]}>
+                      {dist.toFixed(4)}
+                    </Text>
+                  </View>
+                )
+              })}
+            </View>
+
+            <ResultTable columns={columns} rows={rows} rowCount={rows.length} />
+            <View style={styles.statusBarWrap}>
+              <QueryStatusBar executionTimeMs={executionTimeMs} rowCount={rows.length} />
+            </View>
+          </>
+        ) : (
+          <View style={styles.emptyState}>
+            <MaterialCommunityIcons name="vector-triangle" size={32} color={colors.textSecondary} />
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              {isReady ? 'Run a search to see results' : 'Initializing...'}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* SQL Preview */}
+      {lastSql !== '' && (
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <TouchableOpacity
+            onPress={() => setShowQuerySql(!showQuerySql)}
+            style={styles.sqlToggle}>
+            <MaterialCommunityIcons
+              name={showQuerySql ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={colors.textSecondary}
+            />
+            <Text style={[styles.sqlToggleText, { color: colors.textSecondary }]}>
+              {showQuerySql ? 'Hide' : 'Show'} Query SQL
+            </Text>
+          </TouchableOpacity>
+          {showQuerySql && (
+            <View style={[styles.sqlPreview, { backgroundColor: colors.surfaceAlt }]}>
+              <SQLHighlighter sql={lastSql} />
+            </View>
+          )}
+        </View>
+      )}
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
   },
-  headerBar: {
+  scrollContent: {
+    padding: 16,
+    gap: 16,
+    paddingBottom: 32,
+  },
+  headerSection: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  accentBar: {
+    width: 4,
+    borderRadius: 2,
+    alignSelf: 'stretch',
+    minHeight: 40,
+  },
+  headerText: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  subtitle: {
+    fontSize: 13,
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  card: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 16,
+    gap: 12,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e0e0e0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 6,
   },
-  backButton: {
-    paddingRight: 12,
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  backText: {
-    fontSize: 16,
-    color: '#4527A0',
+  statusText: {
+    fontSize: 12,
     fontWeight: '600',
   },
-  headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#212121',
-    textAlign: 'center',
+  loader: {
+    alignSelf: 'flex-start',
   },
-  headerSpacer: {
-    width: 60,
+  infoText: {
+    fontSize: 12,
   },
-  queryBar: {
+  sqlToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#EDE7F6',
+    gap: 4,
   },
-  queryLabel: {
-    fontSize: 13,
-    color: '#4527A0',
-    marginRight: 10,
+  sqlToggleText: {
+    fontSize: 12,
     fontWeight: '500',
   },
-  queryButtons: {
+  sqlPreview: {
+    borderRadius: 6,
+    padding: 12,
+  },
+  metricItem: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+  },
+  metricHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  metricTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  metricDetail: {
+    marginTop: 8,
+    gap: 6,
+  },
+  metricDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  metricFormula: {
+    fontFamily: 'monospace',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
-  queryButton: {
+  chip: {
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#D1C4E9',
   },
-  queryButtonActive: {
-    backgroundColor: '#4527A0',
-    borderColor: '#4527A0',
-  },
-  queryButtonText: {
+  chipText: {
     fontSize: 13,
-    color: '#4527A0',
     fontWeight: '600',
   },
-  queryButtonTextActive: {
-    color: '#fff',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-  },
-  columnsContainer: {
+  searchButton: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
     gap: 6,
   },
-  column: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
+  searchButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
-  columnHeader: {
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-  },
-  columnTitle: {
+  resultCount: {
     fontSize: 12,
-    fontWeight: '700',
   },
-  resultRow: {
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#f0f0f0',
+  distanceList: {
+    gap: 6,
   },
-  resultRowAlt: {
-    backgroundColor: '#FAFAFA',
-  },
-  resultContent: {
-    flexDirection: 'column',
-  },
-  resultLabel: {
-    fontSize: 11,
-    color: '#212121',
-    fontWeight: '500',
-  },
-  resultDistance: {
-    fontSize: 10,
-    color: '#999',
-    marginTop: 2,
-  },
-  vectorPreview: {
-    marginTop: 4,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 4,
-    padding: 4,
-  },
-  vectorText: {
-    fontSize: 9,
-    color: '#666',
-    fontFamily: 'monospace',
-  },
-  footer: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#EDE7F6',
+  distanceRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 8,
   },
-  footerText: {
-    fontSize: 11,
-    color: '#4527A0',
+  distanceLabel: {
+    width: 100,
+    fontSize: 12,
     fontWeight: '500',
   },
-  loadingContainer: {
+  distanceBarWrap: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#0001',
+    overflow: 'hidden',
   },
-  loadingText: {
+  distanceBar: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  distanceValue: {
+    width: 60,
+    fontSize: 11,
+    fontFamily: 'monospace',
+    textAlign: 'right',
+  },
+  statusBarWrap: {
+    marginTop: 4,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 8,
+  },
+  emptyText: {
     fontSize: 14,
-    color: '#666',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
+    gap: 12,
   },
-  errorText: {
-    fontSize: 14,
-    color: '#F44336',
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '700',
     textAlign: 'center',
+  },
+  errorDesc: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 })
