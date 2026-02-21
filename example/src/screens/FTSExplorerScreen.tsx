@@ -107,7 +107,7 @@ export function FTSExplorerScreen({ onBack }: Props) {
         return
       }
 
-      const escapedQuery = query.replace(/'/g, "''")
+      const escapedQuery = query.toLowerCase().replace(/'/g, "''")
       const result = db.executeSync(
         `SELECT id, title, description, author, language, score FROM (SELECT *, fts_main_books.match_bm25(id, '${escapedQuery}') AS score FROM books) sq WHERE score IS NOT NULL ORDER BY score DESC`
       )
