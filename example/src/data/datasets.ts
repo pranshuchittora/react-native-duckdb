@@ -9,13 +9,13 @@ export interface Dataset {
   repo: string
   parquetPath: string
   description: string
-  category: 'tabular' | 'nlp' | 'embeddings' | 'geospatial'
+  category: 'tabular' | 'nlp'
   icon: string
   rowEstimate: string
   sampleQueries: DatasetQuery[]
 }
 
-export const DATASET_CATEGORIES = ['All', 'Tabular', 'NLP', 'Embeddings', 'Geospatial'] as const
+export const DATASET_CATEGORIES = ['All', 'Tabular', 'NLP'] as const
 
 export const CURATED_DATASETS: Dataset[] = [
   {
@@ -37,7 +37,7 @@ export const CURATED_DATASETS: Dataset[] = [
     id: 'wine',
     name: 'Wine Quality',
     repo: 'codesignal/wine-quality',
-    parquetPath: 'hf://datasets/codesignal/wine-quality/data/red-train.parquet',
+    parquetPath: 'hf://datasets/codesignal/wine-quality/data/red-00000-of-00001.parquet',
     description: 'Red wine samples with chemical properties and quality ratings',
     category: 'tabular',
     icon: '🍷',
@@ -49,78 +49,78 @@ export const CURATED_DATASETS: Dataset[] = [
     ],
   },
   {
-    id: 'spotify',
-    name: 'Spotify Tracks',
-    repo: 'maharshipandya/spotify-tracks-dataset',
-    parquetPath: 'hf://datasets/maharshipandya/spotify-tracks-dataset/data/train-00000-of-00001.parquet',
-    description: 'Spotify tracks with audio features: danceability, energy, tempo, and more',
-    category: 'tabular',
-    icon: '🎵',
-    rowEstimate: '~114K rows',
-    sampleQueries: [
-      { name: 'Most Popular', sql: "SELECT track_name, artists, popularity FROM {{TABLE}} ORDER BY popularity DESC LIMIT 20" },
-      { name: 'Avg Features', sql: "SELECT ROUND(AVG(danceability), 3) as avg_dance, ROUND(AVG(energy), 3) as avg_energy, ROUND(AVG(tempo), 1) as avg_tempo FROM {{TABLE}}" },
-      { name: 'High Energy Dance', sql: "SELECT track_name, artists, danceability, energy, tempo FROM {{TABLE}} WHERE danceability > 0.8 AND energy > 0.8 ORDER BY popularity DESC LIMIT 20" },
-    ],
-  },
-  {
-    id: 'data_jobs',
-    name: 'Data Jobs',
-    repo: 'lukebarousse/data_jobs',
-    parquetPath: 'hf://datasets/lukebarousse/data_jobs/data/train-00000-of-00001.parquet',
-    description: 'Data science job postings with skills, salaries, and locations',
-    category: 'tabular',
-    icon: '💼',
-    rowEstimate: '~785K rows',
+    id: 'sst2',
+    name: 'SST-2 Sentiment',
+    repo: 'nyu-mll/glue',
+    parquetPath: 'hf://datasets/nyu-mll/glue/sst2/train-00000-of-00001.parquet',
+    description: 'Stanford Sentiment Treebank — movie review sentences with positive/negative labels',
+    category: 'nlp',
+    icon: '😊',
+    rowEstimate: '~67K rows',
     sampleQueries: [
       { name: 'Preview', sql: "SELECT * FROM {{TABLE}} LIMIT 20" },
-      { name: 'Top Job Titles', sql: "SELECT job_title_short, COUNT(*) as count FROM {{TABLE}} GROUP BY job_title_short ORDER BY count DESC LIMIT 15" },
-      { name: 'Avg Salary', sql: "SELECT job_title_short, ROUND(AVG(salary_year_avg)) as avg_salary, COUNT(*) as jobs FROM {{TABLE}} WHERE salary_year_avg IS NOT NULL GROUP BY job_title_short ORDER BY avg_salary DESC LIMIT 15" },
-    ],
-  },
-  {
-    id: 'imdb',
-    name: 'IMDB Reviews',
-    repo: 'ajaykarthick/imdb-movie-reviews',
-    parquetPath: 'hf://datasets/ajaykarthick/imdb-movie-reviews/data/train-00000-of-00001.parquet',
-    description: 'Movie reviews with sentiment labels for NLP tasks',
-    category: 'nlp',
-    icon: '🎬',
-    rowEstimate: '~40K rows',
-    sampleQueries: [
-      { name: 'Sentiment Counts', sql: "SELECT sentiment, COUNT(*) as count FROM {{TABLE}} GROUP BY sentiment" },
-      { name: 'Longest Reviews', sql: "SELECT sentiment, LENGTH(review) as review_len, LEFT(review, 100) as preview FROM {{TABLE}} ORDER BY review_len DESC LIMIT 10" },
-      { name: 'Short Positive', sql: "SELECT LEFT(review, 200) as review, sentiment FROM {{TABLE}} WHERE sentiment = 'Positive' AND LENGTH(review) < 300 LIMIT 10" },
+      { name: 'Sentiment Counts', sql: "SELECT CASE WHEN label = 1 THEN 'positive' ELSE 'negative' END as sentiment, COUNT(*) as count FROM {{TABLE}} GROUP BY label" },
+      { name: 'Short Sentences', sql: "SELECT sentence, CASE WHEN label = 1 THEN 'positive' ELSE 'negative' END as sentiment, LENGTH(sentence) as len FROM {{TABLE}} WHERE LENGTH(sentence) < 50 ORDER BY len LIMIT 20" },
     ],
   },
   {
     id: 'ag_news',
     name: 'AG News',
     repo: 'fancyzhx/ag_news',
-    parquetPath: 'hf://datasets/fancyzhx/ag_news/data/train-00000-of-00008.parquet',
+    parquetPath: 'hf://datasets/fancyzhx/ag_news/data/train-00000-of-00001.parquet',
     description: 'News articles classified into 4 categories: World, Sports, Business, Sci/Tech',
     category: 'nlp',
     icon: '📰',
-    rowEstimate: '~15K rows (shard 1/8)',
+    rowEstimate: '~120K rows',
     sampleQueries: [
-      { name: 'Articles per Label', sql: "SELECT label, COUNT(*) as count FROM {{TABLE}} GROUP BY label ORDER BY count DESC" },
+      { name: 'Label Counts', sql: "SELECT label, COUNT(*) as count FROM {{TABLE}} GROUP BY label ORDER BY count DESC" },
       { name: 'Sample Articles', sql: "SELECT label, LEFT(text, 150) as preview FROM {{TABLE}} LIMIT 12" },
       { name: 'Longest Articles', sql: "SELECT label, LENGTH(text) as text_len, LEFT(text, 120) as preview FROM {{TABLE}} ORDER BY text_len DESC LIMIT 10" },
     ],
   },
   {
-    id: 'heart_failure',
-    name: 'Heart Failure',
-    repo: 'mstz/heart_failure',
-    parquetPath: 'hf://datasets/mstz/heart_failure/data/death-train.parquet',
-    description: 'Clinical records for heart failure survival prediction',
-    category: 'tabular',
-    icon: '❤️',
-    rowEstimate: '~300 rows',
+    id: 'imdb',
+    name: 'IMDB Reviews',
+    repo: 'stanfordnlp/imdb',
+    parquetPath: 'hf://datasets/stanfordnlp/imdb/plain_text/train-00000-of-00001.parquet',
+    description: '25K movie reviews with binary sentiment labels for NLP benchmarking',
+    category: 'nlp',
+    icon: '🎬',
+    rowEstimate: '~25K rows',
     sampleQueries: [
-      { name: 'Preview', sql: "SELECT * FROM {{TABLE}} LIMIT 20" },
-      { name: 'Survival Stats', sql: "SELECT is_dead, COUNT(*) as count, ROUND(AVG(age), 1) as avg_age FROM {{TABLE}} GROUP BY is_dead" },
-      { name: 'High Risk', sql: "SELECT age, is_male, is_smoker, platelets, serum_creatinine, is_dead FROM {{TABLE}} WHERE serum_creatinine > 1.5 ORDER BY age DESC LIMIT 20" },
+      { name: 'Sentiment Counts', sql: "SELECT CASE WHEN label = 1 THEN 'positive' ELSE 'negative' END as sentiment, COUNT(*) as count FROM {{TABLE}} GROUP BY label" },
+      { name: 'Longest Reviews', sql: "SELECT CASE WHEN label = 1 THEN 'pos' ELSE 'neg' END as sentiment, LENGTH(text) as review_len, LEFT(text, 100) as preview FROM {{TABLE}} ORDER BY review_len DESC LIMIT 10" },
+      { name: 'Short Positive', sql: "SELECT LEFT(text, 200) as review FROM {{TABLE}} WHERE label = 1 AND LENGTH(text) < 300 LIMIT 10" },
+    ],
+  },
+  {
+    id: 'gsm8k',
+    name: 'GSM8K Math',
+    repo: 'openai/gsm8k',
+    parquetPath: 'hf://datasets/openai/gsm8k/main/train-00000-of-00001.parquet',
+    description: 'Grade school math word problems requiring multi-step reasoning',
+    category: 'nlp',
+    icon: '🧮',
+    rowEstimate: '~7.5K rows',
+    sampleQueries: [
+      { name: 'Preview', sql: "SELECT LEFT(question, 200) as question, LEFT(answer, 100) as answer FROM {{TABLE}} LIMIT 10" },
+      { name: 'Row Count', sql: "SELECT COUNT(*) as total_problems FROM {{TABLE}}" },
+      { name: 'Longest Problems', sql: "SELECT LENGTH(question) as q_len, LEFT(question, 150) as question FROM {{TABLE}} ORDER BY q_len DESC LIMIT 10" },
+    ],
+  },
+  {
+    id: 'squad',
+    name: 'SQuAD',
+    repo: 'rajpurkar/squad',
+    parquetPath: 'hf://datasets/rajpurkar/squad/plain_text/train-00000-of-00001.parquet',
+    description: 'Stanford QA dataset — 87K questions on Wikipedia passages',
+    category: 'nlp',
+    icon: '❓',
+    rowEstimate: '~87K rows',
+    sampleQueries: [
+      { name: 'Preview', sql: "SELECT title, LEFT(question, 100) as question, LEFT(context, 100) as context FROM {{TABLE}} LIMIT 10" },
+      { name: 'Topics', sql: "SELECT title, COUNT(*) as questions FROM {{TABLE}} GROUP BY title ORDER BY questions DESC LIMIT 15" },
+      { name: 'Short Questions', sql: "SELECT question, title FROM {{TABLE}} WHERE LENGTH(question) < 40 ORDER BY LENGTH(question) LIMIT 15" },
     ],
   },
 ]

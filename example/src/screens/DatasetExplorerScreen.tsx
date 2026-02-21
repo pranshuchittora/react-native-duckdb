@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
@@ -209,9 +210,12 @@ export function DatasetExplorerScreen() {
         />
       </View>
 
-      <View style={styles.chipRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipRow}>
         {DATASET_CATEGORIES.map(cat => renderCategory(cat))}
-      </View>
+      </ScrollView>
 
       {isCustomPath && (
         <TouchableOpacity

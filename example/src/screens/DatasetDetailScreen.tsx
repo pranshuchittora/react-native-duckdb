@@ -154,8 +154,6 @@ export function DatasetDetailScreen() {
   const categoryColor = {
     tabular: '#FFF100',
     nlp: '#7D66FF',
-    embeddings: '#2EAFFF',
-    geospatial: '#00C770',
   }[dataset.category] ?? brand.yellow
 
   return (
