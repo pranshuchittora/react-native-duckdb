@@ -79,6 +79,7 @@ Configure extensions in your app's `package.json`:
 | `icu` | Unicode collation and text functions | Locale-aware sorting and string operations |
 | `sqlite_scanner` | Read and write SQLite databases | `ATTACH 'file.sqlite' (TYPE sqlite)` |
 | `httpfs` | Remote file access over HTTPS | `SELECT * FROM 'https://url/data.parquet'` |
+| `fts` | BM25 full-text search with 27 language stemmers | `PRAGMA create_fts_index(...)` |
 | `autocomplete` | SQL autocomplete suggestions | Editor integrations |
 | `tpch` | TPC-H benchmark data generator | Benchmarking |
 | `tpcds` | TPC-DS benchmark data generator | Benchmarking |
@@ -192,6 +193,110 @@ SET http_keep_alive = true;
 **Proxy support:** DuckDB httpfs accepts `SET http_proxy` for proxy configuration. Behavior may vary by platform — test in your environment.
 
 **Binary size impact:** httpfs adds OpenSSL + libcurl (~2-4MB per platform) to your app binary.
+
+**Android architecture requirement:** httpfs requires 64-bit ABIs (`arm64-v8a`, `x86_64`). 32-bit ABIs (`armeabi-v7a`, `x86`) are not supported and will be automatically skipped during the build. This is a non-issue in practice — all modern Android devices are 64-bit, and Google Play has required 64-bit support since 2019.
+
+### Full-Text Search (fts)
+
+The `fts` extension adds BM25-ranked full-text search with support for 27 language stemmers. Build indexes over text columns and retrieve ranked results using the `match_bm25` function.
+
+**Enable FTS:**
+
+Add `"fts"` to your extensions list in `package.json` (bare) or `app.json` plugin (Expo):
+
+```json
+{
+  "react-native-duckdb": {
+    "build": {
+      "extensions": ["core_functions", "parquet", "json", "fts"]
+    }
+  }
+}
+```
+
+Then load the extension in SQL before creating indexes:
+
+```sql
+LOAD 'fts';
+```
+
+**Creating an FTS Index:**
+
+```sql
+PRAGMA create_fts_index('table_name', 'id_column', 'text_col1', 'text_col2',
+    stemmer='english',      -- 27 languages available (default: 'porter')
+    stopwords='english',    -- 'english', 'none', or custom table (default: 'english')
+    strip_accents=1,        -- accent-insensitive matching (default: 1)
+    lower=1,                -- case-insensitive matching (default: 1)
+    overwrite=0             -- overwrite existing index (default: 0)
+);
+```
+
+- The first argument is the table name, second is the unique ID column, followed by one or more text columns to index.
+- The index is a **static snapshot** — it must be dropped and recreated after data changes.
+
+**Searching with BM25:**
+
+```sql
+SELECT id, title, score
+FROM (
+    SELECT *, fts_main_<table>.match_bm25(id, 'search query') AS score
+    FROM <table>
+) sq
+WHERE score IS NOT NULL
+ORDER BY score DESC;
+```
+
+> **Important:** The function is schema-scoped: `fts_main_<table>.match_bm25(...)`, NOT a standalone `match_bm25('table', ...)`. The schema name follows the pattern `fts_main_<table_name>`.
+
+**Field-Specific Search:**
+
+Restrict search to specific indexed columns:
+
+```sql
+SELECT *, fts_main_books.match_bm25(id, 'database', fields := 'title') AS score
+FROM books WHERE score IS NOT NULL ORDER BY score DESC;
+```
+
+**match_bm25 Parameters:**
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `k` | `1.2` | Term frequency saturation parameter |
+| `b` | `0.75` | Document length normalization (0 = no normalization, 1 = full) |
+| `conjunctive` | `0` | Set to `1` to require ALL search terms to match |
+
+**Dropping an Index:**
+
+```sql
+PRAGMA drop_fts_index('table_name');
+```
+
+After dropping, you can recreate with different parameters or updated data.
+
+**Stemmer Verification:**
+
+Test how a word is stemmed for a given language:
+
+```sql
+SELECT stem('running', 'english');  -- returns 'run'
+SELECT stem('databases', 'english'); -- returns 'databas'
+SELECT stem('mangeons', 'french');   -- returns 'mang'
+```
+
+**Available Stemmers (27 languages):**
+
+arabic, basque, catalan, danish, dutch, english, finnish, french, german, greek, hindi, hungarian, indonesian, irish, italian, lithuanian, nepali, norwegian, porter, portuguese, romanian, russian, serbian, spanish, swedish, tamil, turkish
+
+**Limitations:**
+
+- **Static snapshot index** — The FTS index does not auto-update. After INSERT/UPDATE/DELETE, you must `PRAGMA drop_fts_index` and recreate it.
+- **No CJK tokenization** — The Snowball stemmer splits on whitespace only. Chinese, Japanese, and Korean text won't be properly tokenized (individual characters won't be searchable as words).
+- **In-memory DB loses index on close** — The FTS index is stored in DuckDB's schema. Closing an in-memory database discards it.
+
+**Binary Size Impact:**
+
+Minimal — FTS adds the Snowball stemmer library (~35 source files), no external dependencies like OpenSSL or libcurl.
 
 ### Runtime Extension Loading
 

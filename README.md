@@ -13,6 +13,7 @@ High-performance DuckDB bindings for React Native, powered by [Nitro Modules](ht
 - **Multi-connection** — Independent connections to the same database
 - **Batch execution** — Execute multiple commands atomically
 - **Full type support** — All DuckDB types including HUGEINT, DECIMAL, TIMESTAMP, ARRAY, MAP, STRUCT, UUID
+- **Full-text search** — BM25 ranked search with 27 language stemmers via the fts extension
 - **Remote data** — Query Parquet, CSV, and JSON files over HTTPS via the httpfs extension
 
 ## Installation
@@ -102,7 +103,21 @@ const result = db.executeSync("SELECT * FROM 'data.parquet'")
 const result = db.executeSync("SELECT * FROM read_csv('data.csv')")
 ```
 
-See [docs/API.md](docs/API.md) for the full extension reference, available extensions, SQLite scanner usage, and file query examples.
+**Full-text search** (requires `fts` extension):
+
+```ts
+// Create an FTS index over text columns
+db.executeSync("LOAD 'fts'")
+db.executeSync("PRAGMA create_fts_index('docs', 'id', 'title', 'body', stemmer='english')")
+
+// Search with BM25 ranking
+const results = db.executeSync(`
+  SELECT *, fts_main_docs.match_bm25(id, 'search query') AS score
+  FROM docs WHERE score IS NOT NULL ORDER BY score DESC
+`)
+```
+
+See [docs/API.md](docs/API.md) for the full extension reference, available extensions, SQLite scanner usage, FTS configuration, and file query examples.
 
 ## Expo Setup
 
