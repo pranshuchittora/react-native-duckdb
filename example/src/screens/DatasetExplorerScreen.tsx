@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  SafeAreaView,
   type ListRenderItem,
 } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
@@ -21,8 +22,6 @@ type NavProp = NativeStackNavigationProp<DatasetStackParamList, 'DatasetExplorer
 const CATEGORY_COLORS: Record<string, string> = {
   tabular: '#FFF100',
   nlp: '#7D66FF',
-  embeddings: '#2EAFFF',
-  geospatial: '#00C770',
 }
 
 let httpfsLoaded = false
@@ -166,18 +165,18 @@ export function DatasetExplorerScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={brand.yellow} />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
           Loading httpfs extension...
         </Text>
-      </View>
+      </SafeAreaView>
     )
   }
 
   if (httpfsError) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.center, { backgroundColor: colors.background }]}>
         <Text style={[styles.errorTitle, { color: colors.error }]}>Extension Error</Text>
         <Text style={[styles.errorMsg, { color: colors.textSecondary }]}>{httpfsError}</Text>
         <TouchableOpacity
@@ -185,12 +184,12 @@ export function DatasetExplorerScreen() {
           onPress={loadHttpfs}>
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     )
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Datasets</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
@@ -244,7 +243,7 @@ export function DatasetExplorerScreen() {
           </View>
         }
       />
-    </View>
+    </SafeAreaView>
   )
 }
 

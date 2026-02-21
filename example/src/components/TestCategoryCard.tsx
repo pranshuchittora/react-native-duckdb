@@ -2,14 +2,15 @@ import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import type { TestResult } from '../testing/types'
 import { TestResultRow } from './TestResultRow'
+import { useTheme } from '../theme'
 
-const CATEGORY_BADGES: Record<string, { text: string; bgColor: string; textColor: string }> = {
-  'Remote Queries': { text: 'NET', bgColor: '#E3F2FD', textColor: '#1565C0' },
-  'Full-Text Search (fts)': { text: 'FTS', bgColor: '#FFF3E0', textColor: '#E65100' },
-  'File Queries (parquet)': { text: 'FILE', bgColor: '#E8F5E9', textColor: '#2E7D32' },
-  'SQLite Scanner (sqlite_scanner)': { text: 'EXT', bgColor: '#F3E5F5', textColor: '#7B1FA2' },
-  'Vector Operations (vss)': { text: 'VSS', bgColor: '#EDE7F6', textColor: '#4527A0' },
-  'HNSW Index (vss)': { text: 'HNSW', bgColor: '#EDE7F6', textColor: '#4527A0' },
+const CATEGORY_BADGES: Record<string, { text: string; bgColor: string; bgColorDark: string; textColor: string; textColorDark: string }> = {
+  'Remote Queries': { text: 'NET', bgColor: '#E3F2FD', bgColorDark: '#1565C033', textColor: '#1565C0', textColorDark: '#64B5F6' },
+  'Full-Text Search (fts)': { text: 'FTS', bgColor: '#E8F5E9', bgColorDark: '#00C77033', textColor: '#2E7D32', textColorDark: '#00C770' },
+  'File Queries (parquet)': { text: 'FILE', bgColor: '#E8F5E9', bgColorDark: '#2E7D3233', textColor: '#2E7D32', textColorDark: '#81C784' },
+  'SQLite Scanner (sqlite_scanner)': { text: 'EXT', bgColor: '#F3E5F5', bgColorDark: '#7B1FA233', textColor: '#7B1FA2', textColorDark: '#CE93D8' },
+  'Vector Operations (vss)': { text: 'VSS', bgColor: '#EDE7F6', bgColorDark: '#7D66FF33', textColor: '#4527A0', textColorDark: '#7D66FF' },
+  'HNSW Index (vss)': { text: 'HNSW', bgColor: '#EDE7F6', bgColorDark: '#7D66FF33', textColor: '#4527A0', textColorDark: '#7D66FF' },
 }
 
 interface Props {
@@ -29,6 +30,7 @@ export function TestCategoryCard({
   isRunning,
   onExplore,
 }: Props) {
+  const { colors, brand, isDark } = useTheme()
   const [expanded, setExpanded] = useState(false)
   const badge = CATEGORY_BADGES[name]
   const passCount = results.filter((r) => r.status === 'pass').length
@@ -37,18 +39,18 @@ export function TestCategoryCard({
   const hasResults = total > 0
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: colors.surface }]}>
       <TouchableOpacity
         onPress={() => setExpanded(!expanded)}
         activeOpacity={0.7}>
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <View style={styles.titleRow}>
-              <Text style={styles.chevron}>{expanded ? '▼' : '▶'}</Text>
-              <Text style={styles.categoryName} numberOfLines={2}>{name}</Text>
+              <Text style={[styles.chevron, { color: colors.textSecondary }]}>{expanded ? '▼' : '▶'}</Text>
+              <Text style={[styles.categoryName, { color: colors.text }]} numberOfLines={2}>{name}</Text>
               {badge && (
-                <View style={[styles.badge, { backgroundColor: badge.bgColor }]}>
-                  <Text style={[styles.badgeText, { color: badge.textColor }]}>{badge.text}</Text>
+                <View style={[styles.badge, { backgroundColor: isDark ? badge.bgColorDark : badge.bgColor }]}>
+                  <Text style={[styles.badgeText, { color: isDark ? badge.textColorDark : badge.textColor }]}>{badge.text}</Text>
                 </View>
               )}
             </View>
@@ -56,15 +58,15 @@ export function TestCategoryCard({
               <View style={styles.metaRow}>
                 <View style={styles.counts}>
                   {passCount > 0 && (
-                    <Text style={styles.passCount}>✓{passCount}</Text>
+                    <Text style={[styles.passCount, { color: brand.green }]}>✓{passCount}</Text>
                   )}
                   {failCount > 0 && (
-                    <Text style={styles.failCount}>✗{failCount}</Text>
+                    <Text style={[styles.failCount, { color: colors.error }]}>✗{failCount}</Text>
                   )}
-                  <Text style={styles.totalCount}>/{total}</Text>
+                  <Text style={[styles.totalCount, { color: colors.textSecondary }]}>/{total}</Text>
                 </View>
                 {totalDurationMs !== undefined && (
-                  <Text style={styles.duration}>{totalDurationMs}ms</Text>
+                  <Text style={[styles.duration, { color: colors.textSecondary }]}>{totalDurationMs}ms</Text>
                 )}
               </View>
             )}
@@ -73,13 +75,13 @@ export function TestCategoryCard({
             {onExplore && (
               <TouchableOpacity
                 onPress={onExplore}
-                style={styles.exploreButton}>
-                <Text style={styles.exploreButtonText}>Explore</Text>
+                style={[styles.exploreButton, { backgroundColor: brand.green + '22' }]}>
+                <Text style={[styles.exploreButtonText, { color: brand.green }]}>Explore</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
               onPress={onRunCategory}
-              style={[styles.runButton, isRunning && styles.runButtonDisabled]}
+              style={[styles.runButton, { backgroundColor: brand.blue }, isRunning && styles.runButtonDisabled]}
               disabled={isRunning}>
               <Text style={styles.runButtonText}>
                 {isRunning ? '...' : 'Run'}
@@ -89,13 +91,13 @@ export function TestCategoryCard({
         </View>
       </TouchableOpacity>
       {expanded && (
-        <View style={styles.testList}>
+        <View style={[styles.testList, { borderTopColor: colors.border }]}>
           {results.length > 0 ? (
             results.map((result) => (
               <TestResultRow key={result.name} result={result} />
             ))
           ) : (
-            <Text style={styles.noResults}>
+            <Text style={[styles.noResults, { color: colors.textSecondary }]}>
               No results yet — tap Run to execute
             </Text>
           )}
@@ -107,7 +109,6 @@ export function TestCategoryCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
     borderRadius: 8,
     marginHorizontal: 16,
     marginVertical: 6,
@@ -138,14 +139,12 @@ const styles = StyleSheet.create({
   },
   chevron: {
     fontSize: 12,
-    color: '#666',
     marginRight: 10,
   },
   categoryName: {
     flexShrink: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: '#212121',
   },
   counts: {
     flexDirection: 'row',
@@ -153,24 +152,20 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   passCount: {
-    color: '#4CAF50',
     fontSize: 13,
     fontWeight: '600',
     marginRight: 4,
   },
   failCount: {
-    color: '#F44336',
     fontSize: 13,
     fontWeight: '600',
     marginRight: 4,
   },
   totalCount: {
-    color: '#999',
     fontSize: 13,
   },
   duration: {
     fontSize: 12,
-    color: '#666',
   },
   actions: {
     flexDirection: 'row',
@@ -178,13 +173,12 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   runButton: {
-    backgroundColor: '#2196F3',
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 4,
   },
   runButtonDisabled: {
-    backgroundColor: '#BDBDBD',
+    opacity: 0.5,
   },
   runButtonText: {
     color: '#fff',
@@ -192,20 +186,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   exploreButton: {
-    backgroundColor: '#FFF3E0',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 4,
     marginRight: 6,
   },
   exploreButtonText: {
-    color: '#E65100',
     fontSize: 13,
     fontWeight: '600',
   },
   testList: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e0e0e0',
   },
   badge: {
     paddingHorizontal: 6,
@@ -220,7 +211,6 @@ const styles = StyleSheet.create({
   },
   noResults: {
     padding: 14,
-    color: '#999',
     fontSize: 13,
     textAlign: 'center',
   },

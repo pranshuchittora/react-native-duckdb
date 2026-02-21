@@ -1,16 +1,24 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import type { TestResult } from '../testing/types'
+import { useTheme } from '../theme'
 
 interface Props {
   result: TestResult
 }
 
 export function TestResultRow({ result }: Props) {
+  const { colors, brand, isDark } = useTheme()
   const [expanded, setExpanded] = useState(false)
   const isPassing = result.status === 'pass'
   const isFailing = result.status === 'fail'
   const isRunning = result.status === 'running'
+
+  const rowBg = isPassing
+    ? (isDark ? '#00C77018' : '#E8F5E9')
+    : isFailing
+      ? (isDark ? '#F8514918' : '#FFEBEE')
+      : undefined
 
   return (
     <TouchableOpacity
@@ -19,22 +27,23 @@ export function TestResultRow({ result }: Props) {
       <View
         style={[
           styles.row,
-          isPassing && styles.passRow,
-          isFailing && styles.failRow,
+          { borderBottomColor: colors.border, backgroundColor: rowBg },
         ]}>
         <View style={styles.indicator}>
-          <Text style={styles.indicatorText}>
+          <Text style={[styles.indicatorText, {
+            color: isPassing ? brand.green : isFailing ? colors.error : colors.textSecondary,
+          }]}>
             {isPassing ? '✓' : isFailing ? '✗' : isRunning ? '⟳' : '○'}
           </Text>
         </View>
-        <Text style={styles.name} numberOfLines={2}>
+        <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
           {result.name}
         </Text>
         {result.durationMs !== undefined && (
-          <Text style={styles.duration}>{result.durationMs}ms</Text>
+          <Text style={[styles.duration, { color: colors.textSecondary }]}>{result.durationMs}ms</Text>
         )}
         {(result.logs.length > 0 || result.error) && (
-          <Text style={styles.chevron}>{expanded ? '▼' : '▶'}</Text>
+          <Text style={[styles.chevron, { color: colors.textSecondary }]}>{expanded ? '▼' : '▶'}</Text>
         )}
       </View>
       {expanded && (result.logs.length > 0 || result.error) && (
@@ -60,13 +69,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e0e0e0',
-  },
-  passRow: {
-    backgroundColor: '#E8F5E9',
-  },
-  failRow: {
-    backgroundColor: '#FFEBEE',
   },
   indicator: {
     width: 24,
@@ -79,20 +81,17 @@ const styles = StyleSheet.create({
   name: {
     flex: 1,
     fontSize: 14,
-    color: '#333',
   },
   duration: {
     fontSize: 12,
-    color: '#666',
     marginLeft: 8,
   },
   chevron: {
     fontSize: 10,
-    color: '#999',
     marginLeft: 8,
   },
   logPanel: {
-    backgroundColor: '#263238',
+    backgroundColor: '#1E1E1E',
     padding: 10,
     marginHorizontal: 4,
     marginBottom: 4,
