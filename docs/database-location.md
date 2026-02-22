@@ -23,7 +23,7 @@ Five readonly properties expose platform-specific storage directories:
 |----------|-----|---------|-----------|
 | `documentsPath` | `NSDocumentDirectory` | `getFilesDir()` | iCloud ✅ / Auto Backup ✅ |
 | `libraryPath` | `NSLibraryDirectory` | `getFilesDir()` | **No** ❌ / Auto Backup ✅ |
-| `databasePath` | `NSDocumentDirectory` | `getDatabasePath("")` parent | iCloud ✅ / Auto Backup ✅ |
+| `databasePath` | `NSDocumentDirectory` | `getDatabasePath()` parent | iCloud ✅ / Auto Backup ✅ |
 | `externalStoragePath` | `""` (N/A) | `getExternalFilesDir(null)` | No ❌ |
 | `defaultPath` | Same as `documentsPath` | Same as `documentsPath` | — |
 
