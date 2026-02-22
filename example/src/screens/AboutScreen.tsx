@@ -84,7 +84,8 @@ export function AboutScreen() {
           const rows = result.toRows()
           setDuckdbVersion(String(rows[0][colName]))
         }
-      } catch {
+      } catch (e) {
+        console.error('[AboutScreen] DuckDB version query failed:', e)
         if (!cancelled) setDuckdbVersion('unknown')
       } finally {
         if (!cancelled) setLoading(false)
