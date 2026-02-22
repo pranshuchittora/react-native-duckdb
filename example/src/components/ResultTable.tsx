@@ -3,10 +3,10 @@ import {
   View,
   Text,
   ScrollView,
-  FlatList,
   StyleSheet,
   type ListRenderItem,
 } from 'react-native'
+import { FlashList } from '@shopify/flash-list'
 import { useTheme } from '../theme'
 
 interface Props {
@@ -19,17 +19,7 @@ interface Props {
 const MIN_COL_WIDTH = 80
 const MAX_COL_WIDTH = 300
 const CHAR_WIDTH = 8.5
-
-function estimateWidth(col: string, rows: any[][]): number {
-  let maxLen = col.length
-  for (let i = 0; i < Math.min(rows.length, 50); i++) {
-    const idx = rows[i] ? String(rows[i][rows[0]?.indexOf?.(col) ?? 0] ?? '').length : 0
-    if (idx > maxLen) maxLen = idx
-  }
-  const estimated = maxLen * CHAR_WIDTH + 24
-  return Math.max(MIN_COL_WIDTH, Math.min(MAX_COL_WIDTH, estimated))
-}
-
+const ROW_HEIGHT = 36
 const DEFAULT_MAX_HEIGHT = 400
 
 export function ResultTable({ columns, rows, rowCount, maxHeight = DEFAULT_MAX_HEIGHT }: Props) {
@@ -74,6 +64,7 @@ export function ResultTable({ columns, rows, rowCount, maxHeight = DEFAULT_MAX_H
 
   const displayCount = rows.length
   const totalCount = rowCount ?? rows.length
+  const listHeight = Math.min(rows.length * ROW_HEIGHT, maxHeight)
 
   return (
     <View style={[styles.container, { borderColor: colors.border }]}>
@@ -88,14 +79,14 @@ export function ResultTable({ columns, rows, rowCount, maxHeight = DEFAULT_MAX_H
               </View>
             ))}
           </View>
-          <FlatList
-            data={rows}
-            renderItem={renderRow}
-            keyExtractor={(_, i) => String(i)}
-            getItemLayout={(_, index) => ({ length: 36, offset: 36 * index, index })}
-            nestedScrollEnabled
-            style={{ maxHeight }}
-          />
+          <View style={{ height: listHeight, width: totalWidth }}>
+            <FlashList
+              data={rows}
+              renderItem={renderRow}
+              estimatedItemSize={ROW_HEIGHT}
+              nestedScrollEnabled
+            />
+          </View>
         </View>
       </ScrollView>
       <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
@@ -120,7 +111,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    minHeight: 36,
+    minHeight: ROW_HEIGHT,
     alignItems: 'center',
   },
   cell: {
