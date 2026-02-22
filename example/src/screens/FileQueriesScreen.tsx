@@ -436,11 +436,12 @@ const styles = StyleSheet.create({
   },
   promptChar: {
     fontFamily: 'monospace',
-    fontSize: 16,
+    fontSize: 13,
+    lineHeight: 20,
     fontWeight: '700',
     color: '#FF6900',
     paddingLeft: 10,
-    paddingTop: 9,
+    paddingTop: 8,
   },
   editorInner: {
     flex: 1,

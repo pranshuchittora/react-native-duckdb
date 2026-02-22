@@ -359,10 +359,11 @@ const styles = StyleSheet.create({
   },
   promptChar: {
     fontFamily: 'monospace',
-    fontSize: 16,
+    fontSize: 13,
+    lineHeight: 20,
     fontWeight: '700',
     paddingLeft: 10,
-    paddingTop: 11,
+    paddingTop: 10,
   },
   editorWrapper: {
     flex: 1,
