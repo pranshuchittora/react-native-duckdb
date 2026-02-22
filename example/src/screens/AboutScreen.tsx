@@ -203,6 +203,64 @@ export function AboutScreen() {
         </Text>
       </View>
 
+      {/* Storage Paths */}
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Storage Paths</Text>
+      <View style={[styles.card, { backgroundColor: colors.surface }]}>
+        <View style={styles.versionRow}>
+          <View style={styles.versionLabel}>
+            <MaterialCommunityIcons name="folder-outline" size={20} color={brand.yellow} />
+            <Text style={[styles.versionKey, { color: colors.text }]}>Documents Path</Text>
+          </View>
+        </View>
+        <Text style={[styles.pathValue, { color: colors.textSecondary }]}>
+          {HybridDuckDB.documentsPath}
+        </Text>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <View style={styles.versionRow}>
+          <View style={styles.versionLabel}>
+            <MaterialCommunityIcons name="book-outline" size={20} color={brand.purple} />
+            <Text style={[styles.versionKey, { color: colors.text }]}>Library Path</Text>
+          </View>
+        </View>
+        <Text style={[styles.pathValue, { color: colors.textSecondary }]}>
+          {HybridDuckDB.libraryPath}
+        </Text>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <View style={styles.versionRow}>
+          <View style={styles.versionLabel}>
+            <MaterialCommunityIcons name="database-outline" size={20} color={brand.blue} />
+            <Text style={[styles.versionKey, { color: colors.text }]}>Database Path</Text>
+          </View>
+        </View>
+        <Text style={[styles.pathValue, { color: colors.textSecondary }]}>
+          {HybridDuckDB.databasePath}
+        </Text>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <View style={styles.versionRow}>
+          <View style={styles.versionLabel}>
+            <MaterialCommunityIcons name="sd" size={20} color={brand.orange} />
+            <Text style={[styles.versionKey, { color: colors.text }]}>External Storage</Text>
+          </View>
+        </View>
+        <Text style={[styles.pathValue, { color: colors.textSecondary }]}>
+          {HybridDuckDB.externalStoragePath || '(not available)'}
+        </Text>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <View style={styles.versionRow}>
+          <View style={styles.versionLabel}>
+            <MaterialCommunityIcons name="pin-outline" size={20} color={brand.green} />
+            <Text style={[styles.versionKey, { color: colors.text }]}>Default Path</Text>
+          </View>
+        </View>
+        <Text style={[styles.pathValue, { color: colors.textSecondary }]}>
+          {HybridDuckDB.defaultPath}
+        </Text>
+      </View>
+
       {/* Extensions */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Extensions in Example App</Text>
       {EXTENSIONS.map((ext) => (
@@ -283,6 +341,7 @@ const styles = StyleSheet.create({
   versionLabel: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   versionKey: { fontSize: 14, fontWeight: '500' },
   versionValue: { fontSize: 14, fontWeight: '700', fontFamily: 'monospace' },
+  pathValue: { fontSize: 11, fontFamily: 'monospace', marginTop: -2, marginBottom: 6, paddingHorizontal: 4 },
   queryHint: { marginTop: 6, paddingTop: 8, opacity: 0.7 },
   divider: { height: 1, marginVertical: 6 },
   archBanner: {
