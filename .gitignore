@@ -30,6 +30,8 @@ DerivedData/
 example/android/.gradle/
 example/android/app/build/
 example/android/build/
+example/android/app/release.keystore
+example/android/keystore.properties
 local.properties
 
 # Misc
