@@ -8,40 +8,78 @@ import {
   ActivityIndicator,
   StyleSheet,
   SafeAreaView,
+  Animated,
   type ListRenderItem,
 } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { HybridDuckDB } from 'react-native-duckdb'
 import { useTheme } from '../theme'
-import { CURATED_DATASETS, DATASET_CATEGORIES, type Dataset } from '../data/datasets'
+import {
+  CURATED_DATASETS,
+  FORMAT_CATEGORIES,
+  FORMAT_COLORS,
+  fetchTrendingDatasets,
+  type Dataset,
+  type DatasetFormat,
+} from '../data/datasets'
 import type { DatasetStackParamList } from '../navigation/types'
 
 type NavProp = NativeStackNavigationProp<DatasetStackParamList, 'DatasetExplorer'>
-
-const CATEGORY_COLORS: Record<string, string> = {
-  tabular: '#FFF100',
-  nlp: '#7D66FF',
-  benchmark: '#FF6900',
-}
-
-const FORMAT_BADGE: Record<string, { bg: string; text: string }> = {
-  parquet: { bg: '#E3F2FD', text: '#1565C0' },
-  csv: { bg: '#E8F5E9', text: '#2E7D32' },
-  json: { bg: '#FFF3E0', text: '#E65100' },
-}
+type TabType = 'Trending' | 'Curated'
 
 let httpfsLoaded = false
+
+function SkeletonCard({ colors }: { colors: any }) {
+  const opacity = useRef(new Animated.Value(0.3)).current
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.7, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ]),
+    )
+    anim.start()
+    return () => anim.stop()
+  }, [opacity])
+
+  return (
+    <Animated.View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, opacity }]}>
+      <View style={styles.cardHeader}>
+        <View style={[styles.skeletonCircle, { backgroundColor: colors.surfaceAlt }]} />
+        <View style={{ flex: 1, gap: 6 }}>
+          <View style={[styles.skeletonBar, { width: '60%', height: 14, backgroundColor: colors.surfaceAlt }]} />
+          <View style={[styles.skeletonBar, { width: '90%', height: 10, backgroundColor: colors.surfaceAlt }]} />
+        </View>
+      </View>
+      <View style={[styles.skeletonBar, { width: '40%', height: 10, backgroundColor: colors.surfaceAlt, marginTop: 8 }]} />
+    </Animated.View>
+  )
+}
 
 export function DatasetExplorerScreen() {
   const { colors, brand, isDark } = useTheme()
   const navigation = useNavigation<NavProp>()
   const [search, setSearch] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('All')
+  const [activeTab, setActiveTab] = useState<TabType>('Trending')
+  const [selectedFormat, setSelectedFormat] = useState<typeof FORMAT_CATEGORIES[number]>('All')
   const [loading, setLoading] = useState(!httpfsLoaded)
   const [httpfsError, setHttpfsError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  const [trendingByFormat, setTrendingByFormat] = useState<Record<DatasetFormat, Dataset[]>>({
+    parquet: [], csv: [], json: [],
+  })
+  const [trendingLoading, setTrendingLoading] = useState(true)
+  const [hasMoreByFormat, setHasMoreByFormat] = useState<Record<DatasetFormat, boolean>>({
+    parquet: false, csv: false, json: false,
+  })
+  const [offsetByFormat, setOffsetByFormat] = useState<Record<DatasetFormat, number>>({
+    parquet: 0, csv: 0, json: 0,
+  })
+  const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -72,26 +110,117 @@ export function DatasetExplorerScreen() {
 
   useEffect(() => { loadHttpfs() }, [loadHttpfs])
 
+  // Fetch trending datasets on mount
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setTrendingLoading(true)
+      try {
+        const [pq, csv, js] = await Promise.all([
+          fetchTrendingDatasets('parquet').catch(() => ({ datasets: [], hasMore: false })),
+          fetchTrendingDatasets('csv').catch(() => ({ datasets: [], hasMore: false })),
+          fetchTrendingDatasets('json').catch(() => ({ datasets: [], hasMore: false })),
+        ])
+        if (cancelled) return
+        setTrendingByFormat({ parquet: pq.datasets, csv: csv.datasets, json: js.datasets })
+        setHasMoreByFormat({ parquet: pq.hasMore, csv: csv.hasMore, json: js.hasMore })
+        setOffsetByFormat({ parquet: pq.datasets.length, csv: csv.datasets.length, json: js.datasets.length })
+      } catch {
+        // Silent fallback — trending stays empty, curated shows
+      } finally {
+        if (!cancelled) setTrendingLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  const hasTrendingData = useMemo(() => {
+    return trendingByFormat.parquet.length > 0 || trendingByFormat.csv.length > 0 || trendingByFormat.json.length > 0
+  }, [trendingByFormat])
+
+  // If API failed (no trending data after load), auto-switch to curated
+  useEffect(() => {
+    if (!trendingLoading && !hasTrendingData) {
+      setActiveTab('Curated')
+    }
+  }, [trendingLoading, hasTrendingData])
+
   const isCustomPath = useMemo(() => {
     const trimmed = debouncedSearch.trim()
     return trimmed.includes('/') && !trimmed.includes(' ') && trimmed.length > 3
   }, [debouncedSearch])
 
-  const filtered = useMemo(() => {
-    let list = CURATED_DATASETS
-    if (selectedCategory !== 'All') {
-      list = list.filter(d => d.category.toLowerCase() === selectedCategory.toLowerCase())
+  const filteredData = useMemo(() => {
+    const allTrending = selectedFormat === 'All'
+      ? [...trendingByFormat.parquet, ...trendingByFormat.csv, ...trendingByFormat.json]
+          .sort((a, b) => (b.trendingScore ?? 0) - (a.trendingScore ?? 0))
+      : trendingByFormat[selectedFormat.toLowerCase() as DatasetFormat] ?? []
+
+    const allCurated = selectedFormat === 'All'
+      ? CURATED_DATASETS
+      : CURATED_DATASETS.filter(d => d.format === selectedFormat.toLowerCase())
+
+    const source = activeTab === 'Trending' ? allTrending : allCurated
+
+    if (!debouncedSearch.trim() || isCustomPath) return source
+    const q = debouncedSearch.toLowerCase()
+    return source.filter(d =>
+      d.name.toLowerCase().includes(q) ||
+      d.description.toLowerCase().includes(q) ||
+      (d.author?.toLowerCase().includes(q) ?? false) ||
+      d.repo.toLowerCase().includes(q),
+    )
+  }, [activeTab, selectedFormat, trendingByFormat, debouncedSearch, isCustomPath])
+
+  const hasMoreForCurrentFormat = useMemo(() => {
+    if (activeTab !== 'Trending') return false
+    if (selectedFormat === 'All') {
+      return hasMoreByFormat.parquet || hasMoreByFormat.csv || hasMoreByFormat.json
     }
-    if (debouncedSearch.trim() && !isCustomPath) {
-      const q = debouncedSearch.toLowerCase()
-      list = list.filter(d =>
-        d.name.toLowerCase().includes(q) ||
-        d.description.toLowerCase().includes(q) ||
-        d.category.toLowerCase().includes(q),
-      )
+    return hasMoreByFormat[selectedFormat.toLowerCase() as DatasetFormat] ?? false
+  }, [activeTab, selectedFormat, hasMoreByFormat])
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore) return
+    setLoadingMore(true)
+    try {
+      if (selectedFormat === 'All') {
+        const formats: DatasetFormat[] = ['parquet', 'csv', 'json']
+        const results = await Promise.all(
+          formats.map(fmt =>
+            hasMoreByFormat[fmt]
+              ? fetchTrendingDatasets(fmt, offsetByFormat[fmt]).catch(() => ({ datasets: [], hasMore: false }))
+              : Promise.resolve({ datasets: [] as Dataset[], hasMore: false }),
+          ),
+        )
+        setTrendingByFormat(prev => ({
+          parquet: [...prev.parquet, ...results[0].datasets],
+          csv: [...prev.csv, ...results[1].datasets],
+          json: [...prev.json, ...results[2].datasets],
+        }))
+        setHasMoreByFormat({
+          parquet: results[0].hasMore,
+          csv: results[1].hasMore,
+          json: results[2].hasMore,
+        })
+        setOffsetByFormat(prev => ({
+          parquet: prev.parquet + results[0].datasets.length,
+          csv: prev.csv + results[1].datasets.length,
+          json: prev.json + results[2].datasets.length,
+        }))
+      } else {
+        const fmt = selectedFormat.toLowerCase() as DatasetFormat
+        const result = await fetchTrendingDatasets(fmt, offsetByFormat[fmt])
+        setTrendingByFormat(prev => ({ ...prev, [fmt]: [...prev[fmt], ...result.datasets] }))
+        setHasMoreByFormat(prev => ({ ...prev, [fmt]: result.hasMore }))
+        setOffsetByFormat(prev => ({ ...prev, [fmt]: prev[fmt] + result.datasets.length }))
+      }
+    } catch {
+      // Silent fail on load more
+    } finally {
+      setLoadingMore(false)
     }
-    return list
-  }, [selectedCategory, debouncedSearch, isCustomPath])
+  }, [selectedFormat, hasMoreByFormat, offsetByFormat, loadingMore])
 
   const navigateToDataset = useCallback((dataset: Dataset) => {
     navigation.navigate('DatasetDetail', { dataset })
@@ -107,10 +236,10 @@ export function DatasetExplorerScreen() {
       repo: trimmed,
       parquetPath: path,
       description: 'User-provided Hugging Face dataset path',
-      category: 'tabular',
       format: fmt,
       icon: '📦',
       rowEstimate: 'Unknown',
+      source: 'curated',
       sampleQueries: [
         { name: 'Preview', sql: 'SELECT * FROM {{TABLE}} LIMIT 100' },
         { name: 'Row Count', sql: 'SELECT COUNT(*) as total_rows FROM {{TABLE}}' },
@@ -119,32 +248,38 @@ export function DatasetExplorerScreen() {
     navigation.navigate('DatasetDetail', { dataset: custom })
   }, [debouncedSearch, navigation])
 
-  const renderCategory = useCallback((cat: string) => {
-    const isSelected = cat === selectedCategory
+  const renderFormatChip = useCallback((cat: typeof FORMAT_CATEGORIES[number]) => {
+    const isSelected = cat === selectedFormat
+    const formatKey = cat.toLowerCase() as DatasetFormat
+    const chipColor = cat === 'All'
+      ? { bg: brand.yellow, text: '#1F2328' }
+      : FORMAT_COLORS[formatKey]
+        ? { bg: FORMAT_COLORS[formatKey].bg.replace('33', ''), text: FORMAT_COLORS[formatKey].text }
+        : { bg: brand.yellow, text: '#1F2328' }
+
     return (
       <TouchableOpacity
         key={cat}
         style={[
           styles.chip,
           {
-            backgroundColor: isSelected ? (isDark ? brand.yellow : '#FFF9C4') : colors.surface,
-            borderColor: isSelected ? brand.yellow : colors.border,
+            backgroundColor: isSelected ? (cat === 'All' ? (isDark ? brand.yellow : '#FFF9C4') : FORMAT_COLORS[formatKey]?.bg ?? colors.surface) : colors.surface,
+            borderColor: isSelected ? (cat === 'All' ? brand.yellow : chipColor.text) : colors.border,
           },
         ]}
-        onPress={() => setSelectedCategory(cat)}>
+        onPress={() => setSelectedFormat(cat)}>
         <Text style={[
           styles.chipText,
-          { color: isSelected ? '#1F2328' : colors.textSecondary },
+          { color: isSelected ? (cat === 'All' ? '#1F2328' : chipColor.text) : colors.textSecondary },
         ]}>
           {cat}
         </Text>
       </TouchableOpacity>
     )
-  }, [selectedCategory, isDark, brand, colors])
+  }, [selectedFormat, isDark, brand, colors])
 
   const renderDataset: ListRenderItem<Dataset> = useCallback(({ item }) => {
-    const accentColor = CATEGORY_COLORS[item.category] ?? brand.yellow
-    const fmt = FORMAT_BADGE[item.format]
+    const fmt = FORMAT_COLORS[item.format]
     return (
       <TouchableOpacity
         style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -156,11 +291,6 @@ export function DatasetExplorerScreen() {
             <Text style={[styles.cardName, { color: colors.text }]} numberOfLines={1}>
               {item.name}
             </Text>
-            <View style={[styles.badge, { backgroundColor: accentColor + '22' }]}>
-              <Text style={[styles.badgeText, { color: isDark ? accentColor : '#1F2328' }]}>
-                {item.category}
-              </Text>
-            </View>
             {fmt && (
               <View style={[styles.badge, { backgroundColor: fmt.bg }]}>
                 <Text style={[styles.badgeText, { color: fmt.text }]}>
@@ -173,12 +303,63 @@ export function DatasetExplorerScreen() {
         <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={2}>
           {item.description}
         </Text>
-        <Text style={[styles.cardRows, { color: colors.textSecondary }]}>
-          {item.rowEstimate}
-        </Text>
+        {item.source === 'trending' ? (
+          <View style={styles.cardMeta}>
+            {item.author && (
+              <Text style={[styles.cardMetaText, { color: colors.textSecondary }]}>
+                by {item.author}
+              </Text>
+            )}
+            <Text style={[styles.cardMetaText, { color: colors.textSecondary }]}>
+              {'\u2764\uFE0F'} {item.likes ?? 0}{'  '}{'\u2B07\uFE0F'} {(item.downloads ?? 0).toLocaleString()}
+            </Text>
+          </View>
+        ) : (
+          <Text style={[styles.cardRows, { color: colors.textSecondary }]}>
+            {item.rowEstimate}
+          </Text>
+        )}
       </TouchableOpacity>
     )
-  }, [colors, brand, isDark, navigateToDataset])
+  }, [colors, navigateToDataset])
+
+  const renderFooter = useCallback(() => {
+    if (!hasMoreForCurrentFormat) return null
+    return (
+      <TouchableOpacity
+        style={[styles.loadMoreBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        onPress={loadMore}
+        disabled={loadingMore}>
+        {loadingMore ? (
+          <ActivityIndicator size="small" color={brand.yellow} />
+        ) : (
+          <Text style={[styles.loadMoreText, { color: brand.yellow }]}>Load More</Text>
+        )}
+      </TouchableOpacity>
+    )
+  }, [hasMoreForCurrentFormat, loadMore, loadingMore, colors, brand])
+
+  const renderEmpty = useCallback(() => {
+    if (activeTab === 'Trending' && trendingLoading) {
+      return (
+        <View style={styles.skeletonContainer}>
+          {[0, 1, 2, 3].map(i => <SkeletonCard key={i} colors={colors} />)}
+        </View>
+      )
+    }
+    const formatLabel = selectedFormat === 'All' ? '' : ` ${selectedFormat.toLowerCase()}`
+    const tabLabel = activeTab.toLowerCase()
+    return (
+      <View style={styles.empty}>
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+          No {tabLabel}{formatLabel} datasets found
+        </Text>
+        <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>
+          Try entering an hf:// path for a custom dataset
+        </Text>
+      </View>
+    )
+  }, [activeTab, selectedFormat, trendingLoading, colors])
 
   if (loading) {
     return (
@@ -217,7 +398,7 @@ export function DatasetExplorerScreen() {
       <View style={[styles.searchRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <TextInput
           style={[styles.searchInput, { color: colors.text }]}
-          placeholder="Search curated or enter hf:// path..."
+          placeholder="Search datasets or enter hf:// path..."
           placeholderTextColor={colors.textSecondary}
           value={search}
           onChangeText={setSearch}
@@ -226,8 +407,35 @@ export function DatasetExplorerScreen() {
         />
       </View>
 
+      {/* Segmented Control — hidden when API failed */}
+      {(hasTrendingData || trendingLoading) && (
+        <View style={[styles.segmentContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          {(['Trending', 'Curated'] as TabType[]).map(tab => {
+            const isActive = tab === activeTab
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[
+                  styles.segmentPill,
+                  isActive && { backgroundColor: brand.yellow },
+                ]}
+                onPress={() => setActiveTab(tab)}>
+                <Text style={[
+                  styles.segmentText,
+                  { color: isActive ? '#1F2328' : colors.textSecondary },
+                  isActive && { fontWeight: '700' },
+                ]}>
+                  {tab}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      )}
+
+      {/* Format chips */}
       <View style={styles.chipRow}>
-        {DATASET_CATEGORIES.map(cat => renderCategory(cat))}
+        {FORMAT_CATEGORIES.map(cat => renderFormatChip(cat))}
       </View>
 
       {isCustomPath && (
@@ -245,20 +453,12 @@ export function DatasetExplorerScreen() {
       )}
 
       <FlatList
-        data={filtered}
+        data={activeTab === 'Trending' && trendingLoading ? [] : filteredData}
         renderItem={renderDataset}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              No datasets match your search
-            </Text>
-            <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>
-              Try entering an hf:// path for a custom dataset
-            </Text>
-          </View>
-        }
+        ListEmptyComponent={renderEmpty}
+        ListFooterComponent={renderFooter}
       />
     </SafeAreaView>
   )
@@ -278,6 +478,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   searchInput: { fontSize: 14, paddingVertical: 10, fontFamily: 'monospace' },
+  segmentContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 2,
+  },
+  segmentPill: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 20,
+    borderRadius: 18,
+  },
+  segmentText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
   chipRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
@@ -306,6 +525,8 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
   cardDesc: { fontSize: 13, lineHeight: 18, marginBottom: 4 },
+  cardMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
+  cardMetaText: { fontSize: 11 },
   cardRows: { fontSize: 11, fontStyle: 'italic' },
   customCard: {
     flexDirection: 'row',
@@ -320,6 +541,15 @@ const styles = StyleSheet.create({
   customIcon: { fontSize: 24, marginRight: 10 },
   customTitle: { fontSize: 14, fontWeight: '600' },
   customPath: { fontSize: 12, fontFamily: 'monospace', marginTop: 2 },
+  loadMoreBtn: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  loadMoreText: { fontSize: 14, fontWeight: '600' },
   loadingText: { marginTop: 12, fontSize: 14 },
   errorTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
   errorMsg: { fontSize: 14, textAlign: 'center', marginBottom: 16, paddingHorizontal: 24 },
@@ -328,4 +558,7 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 40 },
   emptyText: { fontSize: 16, fontWeight: '600' },
   emptyHint: { fontSize: 13, marginTop: 8 },
+  skeletonContainer: { paddingTop: 8 },
+  skeletonCircle: { width: 24, height: 24, borderRadius: 12, marginRight: 10 },
+  skeletonBar: { borderRadius: 4 },
 })
