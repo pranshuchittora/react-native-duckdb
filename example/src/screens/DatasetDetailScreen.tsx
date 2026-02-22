@@ -27,15 +27,8 @@ interface SchemaColumn {
   null: string
 }
 
-const ROW_CAP = 500
-
 function resolveQuery(sql: string, parquetPath: string): string {
   return sql.replace(/\{\{TABLE\}\}/g, `'${parquetPath}'`)
-}
-
-function ensureLimit(sql: string): string {
-  if (/LIMIT\s+\d+/i.test(sql)) return sql
-  return sql.trimEnd().replace(/;?\s*$/, '') + ' LIMIT 501'
 }
 
 export function DatasetDetailScreen() {
@@ -55,7 +48,6 @@ export function DatasetDetailScreen() {
   const [execTimeMs, setExecTimeMs] = useState<number | undefined>()
   const [queryError, setQueryError] = useState<string | undefined>()
   const [executing, setExecuting] = useState(false)
-  const [overflowed, setOverflowed] = useState(false)
 
   const dbRef = useRef<ReturnType<typeof HybridDuckDB.open> | null>(null)
   const [dbReady, setDbReady] = useState(false)
@@ -107,27 +99,19 @@ export function DatasetDetailScreen() {
     if (!dbRef.current) return
     setExecuting(true)
     setQueryError(undefined)
-    setOverflowed(false)
 
     try {
       const db = dbRef.current
-      const limitedSql = ensureLimit(sql)
       const start = Date.now()
-      const result = await db.execute(limitedSql)
+      const result = await db.execute(sql)
       const elapsed = Date.now() - start
 
       const cols = result.columnNames
       const records = result.toRows()
       const tableRows = records.map((r: Record<string, any>) => cols.map(c => r[c]))
 
-      if (tableRows.length > ROW_CAP) {
-        setOverflowed(true)
-        setRows(tableRows.slice(0, ROW_CAP))
-        setRowCount(result.rowCount)
-      } else {
-        setRows(tableRows)
-        setRowCount(tableRows.length)
-      }
+      setRows(tableRows)
+      setRowCount(tableRows.length)
       setColumns(cols)
       setExecTimeMs(elapsed)
     } catch (e: any) {
@@ -156,7 +140,6 @@ export function DatasetDetailScreen() {
     setRowCount(0)
     setExecTimeMs(undefined)
     setQueryError(undefined)
-    setOverflowed(false)
   }, [dataset])
 
   const handleExecute = useCallback(async () => {
@@ -267,25 +250,26 @@ export function DatasetDetailScreen() {
       {/* Query Editor */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Query</Text>
-        <View style={[styles.editorBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          {currentQuery ? (
-            <SQLHighlighter sql={currentQuery} />
-          ) : (
-            <Text style={[styles.editorPlaceholder, { color: colors.textSecondary }]}>
-              Tap a sample query or type below
-            </Text>
-          )}
+        <View style={[styles.editorContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.promptChar, { color: brand.yellow }]}>D</Text>
+          <View style={styles.editorWrapper}>
+            <TextInput
+              style={[styles.editorInput, { color: 'transparent' }]}
+              value={currentQuery}
+              onChangeText={setCurrentQuery}
+              multiline
+              autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
+              placeholder="Enter SQL query..."
+              placeholderTextColor={colors.textSecondary}
+              textAlignVertical="top"
+            />
+            <View style={styles.highlighterOverlay} pointerEvents="none">
+              <SQLHighlighter sql={currentQuery} />
+            </View>
+          </View>
         </View>
-        <TextInput
-          style={[styles.editorInput, { color: colors.text, backgroundColor: colors.surface, borderColor: colors.border }]}
-          placeholder="Edit query here..."
-          placeholderTextColor={colors.textSecondary}
-          value={currentQuery}
-          onChangeText={setCurrentQuery}
-          multiline
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
         <TouchableOpacity
           style={[styles.executeBtn, { backgroundColor: brand.yellow, opacity: executing ? 0.6 : 1 }]}
           onPress={handleExecute}
@@ -303,13 +287,6 @@ export function DatasetDetailScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Results</Text>
           <QueryStatusBar executionTimeMs={execTimeMs} rowCount={rowCount} error={queryError} />
-          {overflowed && (
-            <View style={[styles.overflowBanner, { backgroundColor: '#FFF9C4', borderColor: brand.yellow }]}>
-              <Text style={styles.overflowText}>
-                Showing {ROW_CAP} of {rowCount} rows. Add a LIMIT clause for faster results.
-              </Text>
-            </View>
-          )}
           {columns.length > 0 && rows.length > 0 && (
             <View style={{ marginTop: 8 }}>
               <ResultTable columns={columns} rows={rows} rowCount={rowCount} />
@@ -373,22 +350,40 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   queryChipText: { fontSize: 13, fontWeight: '500' },
-  editorBox: {
+  editorContainer: {
     borderWidth: 1,
     borderRadius: 6,
-    padding: 12,
-    minHeight: 60,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     marginBottom: 8,
   },
-  editorPlaceholder: { fontSize: 13, fontStyle: 'italic' },
-  editorInput: {
-    borderWidth: 1,
-    borderRadius: 6,
-    padding: 10,
-    fontSize: 13,
+  promptChar: {
     fontFamily: 'monospace',
-    minHeight: 60,
+    fontSize: 16,
+    fontWeight: '700',
+    paddingLeft: 10,
+    paddingTop: 11,
+  },
+  editorWrapper: {
+    flex: 1,
+    minHeight: 80,
+    position: 'relative',
+  },
+  editorInput: {
+    fontFamily: 'monospace',
+    fontSize: 13,
+    lineHeight: 20,
+    padding: 10,
+    minHeight: 80,
     textAlignVertical: 'top',
+  },
+  highlighterOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 10,
   },
   executeBtn: {
     marginTop: 10,
@@ -397,11 +392,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   executeBtnText: { color: '#1F2328', fontSize: 15, fontWeight: '700' },
-  overflowBanner: {
-    marginTop: 8,
-    padding: 8,
-    borderWidth: 1,
-    borderRadius: 6,
-  },
-  overflowText: { fontSize: 12, color: '#1F2328' },
 })

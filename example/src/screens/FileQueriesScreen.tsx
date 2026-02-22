@@ -262,22 +262,25 @@ export function FileQueriesScreen() {
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Text style={[styles.cardTitle, { color: colors.text }]}>Query</Text>
         <View style={[styles.editorWrap, { borderColor: colors.border, backgroundColor: colors.background }]}>
-          <TextInput
-            style={[styles.queryInput, { color: colors.text }]}
-            multiline
-            value={query}
-            onChangeText={setQuery}
-            placeholder="SELECT * FROM books_data LIMIT 50;"
-            placeholderTextColor={colors.textSecondary}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </View>
-        {query.trim() !== '' && (
-          <View style={[styles.sqlPreview, { backgroundColor: colors.surfaceAlt }]}>
-            <SQLHighlighter sql={query} />
+          <Text style={styles.promptChar}>D</Text>
+          <View style={styles.editorInner}>
+            <TextInput
+              style={[styles.queryInput, { color: 'transparent' }]}
+              multiline
+              value={query}
+              onChangeText={setQuery}
+              placeholder="SELECT * FROM books_data LIMIT 50;"
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
+              textAlignVertical="top"
+            />
+            <View style={styles.highlighterOverlay} pointerEvents="none">
+              <SQLHighlighter sql={query} />
+            </View>
           </View>
-        )}
+        </View>
         <TouchableOpacity
           style={[styles.runButton, { backgroundColor: ACCENT, opacity: isLoading || !query.trim() ? 0.6 : 1 }]}
           onPress={runQuery}
@@ -428,19 +431,39 @@ const styles = StyleSheet.create({
   editorWrap: {
     borderWidth: 1,
     borderRadius: 8,
-    padding: 4,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  promptChar: {
+    fontFamily: 'monospace',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FF6900',
+    paddingLeft: 10,
+    paddingTop: 9,
+  },
+  editorInner: {
+    flex: 1,
+    minHeight: 80,
+    position: 'relative',
   },
   queryInput: {
     minHeight: 80,
     fontSize: 13,
     fontFamily: 'monospace',
-    paddingHorizontal: 10,
+    lineHeight: 20,
+    paddingHorizontal: 8,
     paddingVertical: 8,
     textAlignVertical: 'top',
   },
-  sqlPreview: {
-    borderRadius: 6,
-    padding: 12,
+  highlighterOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
   },
   runButton: {
     flexDirection: 'row',

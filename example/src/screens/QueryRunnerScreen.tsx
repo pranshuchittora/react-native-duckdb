@@ -52,7 +52,7 @@ const EXAMPLE_QUERIES = [
   },
 ]
 
-const MAX_DISPLAY_ROWS = 500
+
 
 interface QueryResult {
   columns: string[]
@@ -121,9 +121,8 @@ export function QueryRunnerScreen({ navigation, route }: Props) {
         const columnNames = lastResult.columnNames
         const rowObjects = lastResult.toRows()
         const totalRows = rowObjects.length
-        const capped = rowObjects.slice(0, MAX_DISPLAY_ROWS)
 
-        const rows = capped.map(row =>
+        const rows = rowObjects.map(row =>
           columnNames.map(col => (row as Record<string, unknown>)[col]),
         )
 
@@ -204,6 +203,7 @@ export function QueryRunnerScreen({ navigation, route }: Props) {
       <ScrollView style={styles.body} keyboardShouldPersistTaps="handled">
         {/* SQL Editor */}
         <View style={[styles.editorContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.promptChar, { color: brand.yellow }]}>D</Text>
           <View style={styles.editorWrapper}>
             <TextInput
               style={[styles.editor, { color: 'transparent' }]}
@@ -318,12 +318,6 @@ export function QueryRunnerScreen({ navigation, route }: Props) {
               </TouchableOpacity>
             </View>
 
-            {result.totalRows > MAX_DISPLAY_ROWS && (
-              <Text style={[styles.capNote, { color: brand.orange }]}>
-                Showing {MAX_DISPLAY_ROWS} of {result.totalRows} rows
-              </Text>
-            )}
-
             {viewMode === 'table' ? (
               <ResultTable
                 columns={result.columns}
@@ -423,9 +417,19 @@ const styles = StyleSheet.create({
   editorContainer: {
     borderWidth: 1,
     borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     position: 'relative',
   },
+  promptChar: {
+    fontFamily: 'monospace',
+    fontSize: 16,
+    fontWeight: '700',
+    paddingLeft: 10,
+    paddingTop: 12,
+  },
   editorWrapper: {
+    flex: 1,
     minHeight: 130,
     position: 'relative',
   },
@@ -541,11 +545,6 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: 12,
-    fontWeight: '600',
-  },
-  capNote: {
-    fontSize: 11,
-    marginBottom: 6,
     fontWeight: '600',
   },
   jsonView: {
