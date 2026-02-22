@@ -9,7 +9,7 @@ class RNDuckDBInitProvider : ContentProvider() {
     override fun onCreate(): Boolean {
         val ctx = context ?: return false
         val docPath = ctx.filesDir.absolutePath
-        val dbPath = ctx.getDatabasePath("").parentFile?.absolutePath ?: docPath
+        val dbPath = ctx.getDatabasePath("x").parentFile?.absolutePath ?: docPath
         val extPath = ctx.getExternalFilesDir(null)?.absolutePath ?: ""
         DocPathSetter.setAllPaths(docPath, dbPath, extPath)
         return true

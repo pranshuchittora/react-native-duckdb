@@ -42,10 +42,11 @@ static void initDocPath(JNIEnv* env) {
     HybridDuckDB::documentsDir = filesPath;
     HybridDuckDB::libraryDir = filesPath;
 
-    // getDatabasePath("") → parent is the databases directory
+    // getDatabasePath("x") → get parent to find the databases directory
+    // Note: getDatabasePath("") crashes on Android (charAt(0) on empty string)
     jmethodID getDbPath = env->GetMethodID(contextClass, "getDatabasePath", "(Ljava/lang/String;)Ljava/io/File;");
-    jstring emptyStr = env->NewStringUTF("");
-    jobject dbPathFile = env->CallObjectMethod(app, getDbPath, emptyStr);
+    jstring dummyName = env->NewStringUTF("x");
+    jobject dbPathFile = env->CallObjectMethod(app, getDbPath, dummyName);
     if (dbPathFile) {
         jclass fileClass = env->GetObjectClass(dbPathFile);
         jmethodID getParent = env->GetMethodID(fileClass, "getParent", "()Ljava/lang/String;");
@@ -59,7 +60,7 @@ static void initDocPath(JNIEnv* env) {
         env->DeleteLocalRef(fileClass);
         env->DeleteLocalRef(dbPathFile);
     }
-    env->DeleteLocalRef(emptyStr);
+    env->DeleteLocalRef(dummyName);
 
     // getExternalFilesDir(null) — may return null
     jmethodID getExtDir = env->GetMethodID(contextClass, "getExternalFilesDir", "(Ljava/lang/String;)Ljava/io/File;");
