@@ -45,7 +45,7 @@ const HF_API = 'https://huggingface.co/api/datasets'
 function hfToDataset(hf: HFDatasetResponse, format: DatasetFormat): Dataset {
   const ext = format === 'json' ? 'jsonl' : format
   return {
-    id: `hf_${hf.id.replace('/', '_')}`,
+    id: `hf_${format}_${hf.id.replace('/', '_')}`,
     name: hf.id.split('/').pop() || hf.id,
     repo: hf.id,
     parquetPath: `hf://datasets/${hf.id}/**/*.${ext}`,

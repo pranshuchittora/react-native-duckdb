@@ -194,11 +194,17 @@ export function DatasetExplorerScreen() {
               : Promise.resolve({ datasets: [] as Dataset[], hasMore: false }),
           ),
         )
-        setTrendingByFormat(prev => ({
-          parquet: [...prev.parquet, ...results[0].datasets],
-          csv: [...prev.csv, ...results[1].datasets],
-          json: [...prev.json, ...results[2].datasets],
-        }))
+        setTrendingByFormat(prev => {
+          const dedup = (existing: Dataset[], incoming: Dataset[]) => {
+            const ids = new Set(existing.map(d => d.id))
+            return [...existing, ...incoming.filter(d => !ids.has(d.id))]
+          }
+          return {
+            parquet: dedup(prev.parquet, results[0].datasets),
+            csv: dedup(prev.csv, results[1].datasets),
+            json: dedup(prev.json, results[2].datasets),
+          }
+        })
         setHasMoreByFormat({
           parquet: results[0].hasMore,
           csv: results[1].hasMore,
@@ -212,7 +218,10 @@ export function DatasetExplorerScreen() {
       } else {
         const fmt = selectedFormat.toLowerCase() as DatasetFormat
         const result = await fetchTrendingDatasets(fmt, offsetByFormat[fmt])
-        setTrendingByFormat(prev => ({ ...prev, [fmt]: [...prev[fmt], ...result.datasets] }))
+        setTrendingByFormat(prev => {
+          const ids = new Set(prev[fmt].map(d => d.id))
+          return { ...prev, [fmt]: [...prev[fmt], ...result.datasets.filter(d => !ids.has(d.id))] }
+        })
         setHasMoreByFormat(prev => ({ ...prev, [fmt]: result.hasMore }))
         setOffsetByFormat(prev => ({ ...prev, [fmt]: prev[fmt] + result.datasets.length }))
       }
