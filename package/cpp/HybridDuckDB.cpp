@@ -8,10 +8,20 @@
 namespace margelo::nitro::rnduckdb {
 
 std::string HybridDuckDB::docPath = "";
+std::string HybridDuckDB::documentsDir = "";
+std::string HybridDuckDB::libraryDir = "";
+std::string HybridDuckDB::databaseDir = "";
+std::string HybridDuckDB::externalDir = "";
 
 std::string HybridDuckDB::getVersion() {
   return std::string(duckdb::DuckDB::LibraryVersion());
 }
+
+std::string HybridDuckDB::getDocumentsPath() { return documentsDir; }
+std::string HybridDuckDB::getLibraryPath() { return libraryDir; }
+std::string HybridDuckDB::getDatabasePath() { return databaseDir; }
+std::string HybridDuckDB::getExternalStoragePath() { return externalDir; }
+std::string HybridDuckDB::getDefaultPath() { return docPath; }
 
 std::shared_ptr<HybridDatabaseSpec> HybridDuckDB::open(
     const std::string& path,

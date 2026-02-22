@@ -49,6 +49,11 @@ namespace margelo::nitro::rnduckdb {
     public:
       // Properties
       virtual std::string getVersion() = 0;
+      virtual std::string getDocumentsPath() = 0;
+      virtual std::string getLibraryPath() = 0;
+      virtual std::string getDatabasePath() = 0;
+      virtual std::string getExternalStoragePath() = 0;
+      virtual std::string getDefaultPath() = 0;
 
     public:
       // Methods

@@ -15,6 +15,11 @@ namespace margelo::nitro::rnduckdb {
     // load custom methods/properties
     registerHybrids(this, [](Prototype& prototype) {
       prototype.registerHybridGetter("version", &HybridDuckDBSpec::getVersion);
+      prototype.registerHybridGetter("documentsPath", &HybridDuckDBSpec::getDocumentsPath);
+      prototype.registerHybridGetter("libraryPath", &HybridDuckDBSpec::getLibraryPath);
+      prototype.registerHybridGetter("databasePath", &HybridDuckDBSpec::getDatabasePath);
+      prototype.registerHybridGetter("externalStoragePath", &HybridDuckDBSpec::getExternalStoragePath);
+      prototype.registerHybridGetter("defaultPath", &HybridDuckDBSpec::getDefaultPath);
       prototype.registerHybridMethod("open", &HybridDuckDBSpec::open);
       prototype.registerHybridMethod("deleteDatabase", &HybridDuckDBSpec::deleteDatabase);
     });

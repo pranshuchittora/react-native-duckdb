@@ -11,9 +11,17 @@ using namespace margelo::nitro;
 using namespace margelo::nitro::rnduckdb;
 
 + (void)load {
-  NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true);
-  NSString *documentPath = [paths objectAtIndex:0];
+  NSArray *docPaths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true);
+  NSString *documentPath = [docPaths objectAtIndex:0];
+
+  NSArray *libPaths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, true);
+  NSString *libraryPath = [libPaths objectAtIndex:0];
+
   HybridDuckDB::docPath = [documentPath UTF8String];
+  HybridDuckDB::documentsDir = [documentPath UTF8String];
+  HybridDuckDB::libraryDir = [libraryPath UTF8String];
+  HybridDuckDB::databaseDir = [documentPath UTF8String];
+  HybridDuckDB::externalDir = "";
 }
 
 @end

@@ -8,7 +8,10 @@ import android.net.Uri
 class RNDuckDBInitProvider : ContentProvider() {
     override fun onCreate(): Boolean {
         val ctx = context ?: return false
-        DocPathSetter.setDocPath(ctx.filesDir.absolutePath)
+        val docPath = ctx.filesDir.absolutePath
+        val dbPath = ctx.getDatabasePath("").parentFile?.absolutePath ?: docPath
+        val extPath = ctx.getExternalFilesDir(null)?.absolutePath ?: ""
+        DocPathSetter.setAllPaths(docPath, dbPath, extPath)
         return true
     }
 

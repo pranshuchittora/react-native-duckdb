@@ -1,4 +1,13 @@
+import { HybridDuckDB as _HybridDuckDB } from './nitro'
+
 export { HybridDuckDB } from './nitro'
+
+export const DOCUMENTS_PATH = _HybridDuckDB.documentsPath
+export const LIBRARY_PATH = _HybridDuckDB.libraryPath
+export const DATABASE_PATH = _HybridDuckDB.databasePath
+export const EXTERNAL_STORAGE_PATH = _HybridDuckDB.externalStoragePath
+export const DEFAULT_PATH = _HybridDuckDB.defaultPath
+
 export type { DuckDB } from './specs/DuckDB.nitro'
 export type { Database } from './specs/Database.nitro'
 export type { QueryResult } from './specs/QueryResult.nitro'
