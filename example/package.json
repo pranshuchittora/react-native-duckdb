@@ -16,11 +16,12 @@
     "@react-navigation/native-stack": "^7.3.10",
     "react": "19.1.1",
     "react-native": "0.82.1",
+    "react-native-duckdb": "workspace:*",
     "react-native-nitro-modules": "0.33.9",
     "react-native-safe-area-context": "^5.4.0",
     "react-native-screens": "^4.10.0",
-    "react-native-vector-icons": "^10.2.0",
-    "react-native-duckdb": "workspace:*"
+    "react-native-svg": "^15.15.3",
+    "react-native-vector-icons": "^10.2.0"
   },
   "react-native-duckdb": {
     "build": {

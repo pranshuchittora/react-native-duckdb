@@ -8,13 +8,13 @@ import type { DatasetStackParamList } from './types'
 const Stack = createNativeStackNavigator<DatasetStackParamList>()
 
 export function DatasetStack() {
-  const { colors, brand } = useTheme()
+  const { colors } = useTheme()
 
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: colors.surface },
-        headerTintColor: brand.yellow,
+        headerTintColor: colors.tabBarActiveTint,
         headerTitleStyle: { color: colors.text, fontWeight: '600' },
         contentStyle: { backgroundColor: colors.background },
       }}>

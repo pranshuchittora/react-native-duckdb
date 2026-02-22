@@ -15,13 +15,13 @@ import type { ExplorerStackParamList } from './types'
 const Stack = createNativeStackNavigator<ExplorerStackParamList>()
 
 export function ExplorerStack() {
-  const { colors, brand } = useTheme()
+  const { colors } = useTheme()
 
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: colors.surface },
-        headerTintColor: brand.yellow,
+        headerTintColor: colors.tabBarActiveTint,
         headerTitleStyle: { color: colors.text, fontWeight: '600' },
         contentStyle: { backgroundColor: colors.background },
       }}>
