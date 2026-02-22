@@ -177,7 +177,7 @@ These are complementary paradigms. Use SQLite-based libraries for your app's tra
 
 I started working on this library in late 2023. The initial prototype took a full week and could barely run basic SQL statements — no extensions, no streaming, no type system. It proved the concept but was nowhere near production quality.
 
-Fast forward to 2025: with the help of LLMs, I rebuilt the entire library from scratch — production-grade, fully documented, with 11 statically-linked extensions, 30+ type mappings, streaming, vector search, full-text search, and an example app that doubles as a DuckDB dev studio. **The entire rebuild took under one week.**
+Fast forward to Feb 2026: with the help of LLMs, I rebuilt the entire library from scratch — production-grade, fully documented, with 11 statically-linked extensions, 30+ type mappings, streaming, vector search, full-text search, and an example app that doubles as a DuckDB dev studio. **The entire rebuild took under one week.**
 
 The stack: [Claude Opus 4 (claude-4-6)](https://www.anthropic.com/) running through [opencode](https://opencode.ai/), orchestrated by the [Get Shit Done](https://github.com/nicekitchen/get-shit-done) framework for structured multi-phase execution. The total inference cost was roughly **~$1,500**.
 
