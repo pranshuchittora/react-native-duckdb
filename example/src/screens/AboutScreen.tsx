@@ -290,19 +290,38 @@ export function AboutScreen() {
 
       {/* Author */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Author</Text>
-      <TouchableOpacity
-        style={[styles.card, { backgroundColor: colors.surface }]}
-        activeOpacity={0.7}
-        onPress={() => openLink('https://github.com/pranshuchittora')}>
-        <View style={styles.authorRow}>
-          <MaterialCommunityIcons name="account-circle-outline" size={36} color={brand.purple} />
-          <View style={styles.authorInfo}>
-            <Text style={[styles.authorName, { color: colors.text }]}>Pranshu Chittora</Text>
-            <Text style={[styles.authorHandle, { color: colors.textSecondary }]}>@pranshuchittora</Text>
+      <View style={[styles.card, { backgroundColor: colors.surface }]}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => openLink('https://github.com/pranshuchittora')}>
+          <View style={styles.authorRow}>
+            <MaterialCommunityIcons name="account-circle-outline" size={36} color={brand.purple} />
+            <View style={styles.authorInfo}>
+              <Text style={[styles.authorName, { color: colors.text }]}>Pranshu Chittora</Text>
+              <Text style={[styles.authorHandle, { color: colors.textSecondary }]}>@pranshuchittora</Text>
+            </View>
+            <MaterialCommunityIcons name="github" size={20} color={colors.textSecondary} />
           </View>
-          <MaterialCommunityIcons name="github" size={20} color={colors.textSecondary} />
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => {
+            const subject = encodeURIComponent('DuckDB Explorer - Feedback')
+            const body = encodeURIComponent(
+              `\n\n---\nApp: DuckDB Explorer v${PKG_VERSION}\nDuckDB: ${duckdbVersion ?? 'unknown'}\nRN: ${getRNVersion()}\nPlatform: ${Platform.OS} ${Platform.Version}\nArch: ${getIsNewArch() ? 'New' : 'Legacy'}\nBridge: Nitro Modules (JSI)`,
+            )
+            openLink(`mailto:pranshuchittora17@gmail.com?subject=${subject}&body=${body}`)
+          }}>
+          <View style={styles.authorRow}>
+            <MaterialCommunityIcons name="email-outline" size={22} color={brand.blue} style={{ marginLeft: 7, marginRight: 7 }} />
+            <View style={styles.authorInfo}>
+              <Text style={[styles.authorEmail, { color: brand.blue }]}>pranshuchittora17@gmail.com</Text>
+            </View>
+            <MaterialCommunityIcons name="open-in-new" size={16} color={colors.textSecondary} />
+          </View>
+        </TouchableOpacity>
+      </View>
 
       {/* License */}
       <View style={styles.footer}>
@@ -369,6 +388,7 @@ const styles = StyleSheet.create({
   authorInfo: { flex: 1 },
   authorName: { fontSize: 16, fontWeight: '600' },
   authorHandle: { fontSize: 13, marginTop: 2 },
+  authorEmail: { fontSize: 14, fontWeight: '500' },
   footer: { alignItems: 'center', marginTop: 12, marginBottom: 8 },
   footerText: { fontSize: 12 },
 })
