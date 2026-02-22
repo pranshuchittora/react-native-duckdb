@@ -76,7 +76,7 @@ export function AboutScreen() {
     let cancelled = false
     ;(async () => {
       try {
-        const db = await HybridDuckDB.open(':memory:')
+        const db = HybridDuckDB.open(':memory:', {})
         dbRef.current = db
         const result = await db.execute('SELECT version()')
         if (!cancelled && result.rowCount > 0) {
