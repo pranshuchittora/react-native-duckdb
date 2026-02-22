@@ -11,6 +11,7 @@ import {
   Animated,
   type ListRenderItem,
 } from 'react-native'
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { HybridDuckDB } from 'react-native-duckdb'
@@ -237,7 +238,7 @@ export function DatasetExplorerScreen() {
       parquetPath: path,
       description: 'User-provided Hugging Face dataset path',
       format: fmt,
-      icon: '📦',
+      icon: 'package-variant',
       rowEstimate: 'Unknown',
       source: 'curated',
       sampleQueries: [
@@ -286,7 +287,7 @@ export function DatasetExplorerScreen() {
         activeOpacity={0.7}
         onPress={() => navigateToDataset(item)}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardIcon}>{item.icon}</Text>
+          <MaterialCommunityIcons name={item.icon} size={24} color={colors.textSecondary} style={styles.cardIcon} />
           <View style={styles.cardTitleArea}>
             <Text style={[styles.cardName, { color: colors.text }]} numberOfLines={1}>
               {item.name}
@@ -310,9 +311,13 @@ export function DatasetExplorerScreen() {
                 by {item.author}
               </Text>
             )}
-            <Text style={[styles.cardMetaText, { color: colors.textSecondary }]}>
-              {'\u2764\uFE0F'} {item.likes ?? 0}{'  '}{'\u2B07\uFE0F'} {(item.downloads ?? 0).toLocaleString()}
-            </Text>
+            <View style={styles.metaIcons}>
+              <MaterialCommunityIcons name="heart" size={12} color={colors.textSecondary} />
+              <Text style={[styles.cardMetaText, { color: colors.textSecondary }]}> {item.likes ?? 0}</Text>
+              <Text style={[styles.cardMetaText, { color: colors.textSecondary }]}>{'  '}</Text>
+              <MaterialCommunityIcons name="download" size={12} color={colors.textSecondary} />
+              <Text style={[styles.cardMetaText, { color: colors.textSecondary }]}> {(item.downloads ?? 0).toLocaleString()}</Text>
+            </View>
           </View>
         ) : (
           <Text style={[styles.cardRows, { color: colors.textSecondary }]}>
@@ -442,7 +447,7 @@ export function DatasetExplorerScreen() {
         <TouchableOpacity
           style={[styles.customCard, { backgroundColor: colors.surface, borderColor: brand.yellow }]}
           onPress={openCustomPath}>
-          <Text style={styles.customIcon}>📦</Text>
+          <MaterialCommunityIcons name="package-variant" size={24} color={brand.yellow} style={styles.customIcon} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.customTitle, { color: colors.text }]}>Open Custom Dataset</Text>
             <Text style={[styles.customPath, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -519,13 +524,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  cardIcon: { fontSize: 24, marginRight: 10 },
+  cardIcon: { marginRight: 10 },
   cardTitleArea: { flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   cardName: { fontSize: 16, fontWeight: '600', flexShrink: 1 },
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
   cardDesc: { fontSize: 13, lineHeight: 18, marginBottom: 4 },
   cardMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
+  metaIcons: { flexDirection: 'row', alignItems: 'center' },
   cardMetaText: { fontSize: 11 },
   cardRows: { fontSize: 11, fontStyle: 'italic' },
   customCard: {
@@ -538,7 +544,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderStyle: 'dashed',
   },
-  customIcon: { fontSize: 24, marginRight: 10 },
+  customIcon: { marginRight: 10 },
   customTitle: { fontSize: 14, fontWeight: '600' },
   customPath: { fontSize: 12, fontFamily: 'monospace', marginTop: 2 },
   loadMoreBtn: {

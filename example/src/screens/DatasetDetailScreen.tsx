@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Clipboard,
 } from 'react-native'
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useRoute } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
 import { HybridDuckDB } from 'react-native-duckdb'
@@ -157,7 +158,8 @@ export function DatasetDetailScreen() {
       {/* Header */}
       <View style={styles.section}>
         <View style={styles.headerRow}>
-          <Text style={[styles.datasetName, { color: colors.text }]}>{dataset.icon} {dataset.name}</Text>
+          <MaterialCommunityIcons name={dataset.icon} size={22} color={colors.text} />
+          <Text style={[styles.datasetName, { color: colors.text }]}>{dataset.name}</Text>
           <View style={[styles.badge, { backgroundColor: formatColor.bg }]}>
             <Text style={[styles.badgeText, { color: formatColor.text }]}>
               {dataset.format.toUpperCase()}
@@ -174,14 +176,20 @@ export function DatasetDetailScreen() {
             )}
             <View style={styles.metaStats}>
               {dataset.likes != null && (
-                <Text style={[styles.metaStat, { color: colors.textSecondary }]}>
-                  ❤️ {dataset.likes.toLocaleString()}
-                </Text>
+                <View style={styles.metaStatRow}>
+                  <MaterialCommunityIcons name="heart" size={12} color={colors.textSecondary} />
+                  <Text style={[styles.metaStat, { color: colors.textSecondary }]}>
+                    {' '}{dataset.likes.toLocaleString()}
+                  </Text>
+                </View>
               )}
               {dataset.downloads != null && (
-                <Text style={[styles.metaStat, { color: colors.textSecondary }]}>
-                  ⬇️ {dataset.downloads.toLocaleString()}
-                </Text>
+                <View style={styles.metaStatRow}>
+                  <MaterialCommunityIcons name="download" size={12} color={colors.textSecondary} />
+                  <Text style={[styles.metaStat, { color: colors.textSecondary }]}>
+                    {' '}{dataset.downloads.toLocaleString()}
+                  </Text>
+                </View>
               )}
             </View>
           </View>
@@ -343,6 +351,7 @@ const styles = StyleSheet.create({
   rowEstimate: { fontSize: 12, fontStyle: 'italic', marginTop: 4 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 },
   metaStats: { flexDirection: 'row', gap: 12 },
+  metaStatRow: { flexDirection: 'row', alignItems: 'center' },
   metaStat: { fontSize: 12 },
   metaText: { fontSize: 12 },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
