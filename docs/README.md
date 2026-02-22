@@ -14,4 +14,4 @@
 | Document | Description |
 |----------|-------------|
 | [API Reference](API.md) | Complete API surface — every method, property, and type definition |
-| [Expo Config Plugin](EXPO.md) | Expo managed workflow setup, internal architecture, migration, and troubleshooting |
+| [Expo Config Plugin](expo.md) | Expo managed workflow setup, internal architecture, migration, and troubleshooting |
