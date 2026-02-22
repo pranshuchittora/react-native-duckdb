@@ -84,6 +84,7 @@
   },
   "devDependencies": {
     "@expo/config-plugins": "^9.0.0",
+    "@types/node": "^25.3.0",
     "jest": "^30.2.0",
     "nitrogen": "0.33.9",
     "react": "19.1.1",
