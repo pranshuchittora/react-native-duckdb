@@ -49,6 +49,116 @@ const rows = result.toRows()
 db.close()
 ```
 
+## Features
+
+### Configuration
+
+```ts
+const db = HybridDuckDB.open(':memory:', {
+  threads: '2',
+  memory_limit: '256MB',
+  default_order: 'DESC',
+})
+```
+
+### Async Execution
+
+```ts
+const result = await db.execute('SELECT * FROM large_table WHERE category = ?', ['electronics'])
+const rows = result.toRows()
+```
+
+### Prepared Statements
+
+```ts
+const stmt = db.prepare('SELECT * FROM users WHERE age > ?')
+stmt.bind([21])
+const result = stmt.executeSync()
+stmt.finalize()
+```
+
+### Named Parameters
+
+```ts
+const result = db.executeSyncNamed(
+  'SELECT * FROM users WHERE name = $name AND age > $age',
+  { $name: 'Alice', $age: 21 }
+)
+```
+
+### Query Cancellation
+
+```ts
+const promise = db.execute('SELECT * FROM generate_series(1, 100000000)')
+setTimeout(() => db.cancel(), 50)
+```
+
+### Profiling
+
+```ts
+db.executeSync("PRAGMA enable_profiling='json'")
+db.executeSync('SELECT * FROM large_table ORDER BY score DESC')
+const profile = db.getProfilingInfo() // JSON string with timing breakdown
+```
+
+### Progress Callbacks
+
+```ts
+db.setProgressCallback((percentage) => {
+  console.log(`Query progress: ${percentage}%`)
+})
+const result = await db.execute('SELECT * FROM big_join')
+db.removeProgressCallback()
+```
+
+### Batch Execution
+
+```ts
+const { rowsAffected } = db.executeBatchSync([
+  { query: 'INSERT INTO logs VALUES (?, ?)', params: [1, 'start'] },
+  { query: 'INSERT INTO logs VALUES (?, ?)', params: [2, 'end'] },
+])
+```
+
+### Transactions
+
+```ts
+import { executeTransaction } from 'react-native-duckdb'
+
+const count = await executeTransaction(db, async (tx) => {
+  tx.executeSync('INSERT INTO orders VALUES (1, 99.99)')
+  tx.executeSync('UPDATE inventory SET stock = stock - 1 WHERE id = 1')
+  return tx.executeSync('SELECT count(*) as n FROM orders').toRows()[0].n
+})
+// auto-commits on success, auto-rolls-back on error
+```
+
+### Multi-Database
+
+```ts
+db.attach('/path/to/other.duckdb', 'analytics', { readOnly: true })
+const result = db.executeSync('SELECT * FROM analytics.events LIMIT 10')
+db.detach('analytics')
+```
+
+### Database Paths
+
+```ts
+import { DOCUMENTS_PATH, LIBRARY_PATH } from 'react-native-duckdb'
+
+const db = HybridDuckDB.open(`${LIBRARY_PATH}/analytics.duckdb`, {})
+// iOS: NSLibraryDirectory (no iCloud backup)
+// Android: getFilesDir()
+```
+
+See [docs/database-location.md](docs/database-location.md) for all available paths, backup behavior, and platform details.
+
+### Delete Database
+
+```ts
+HybridDuckDB.deleteDatabase(`${DOCUMENTS_PATH}/old.duckdb`)
+```
+
 ## Streaming Large Datasets
 
 Process millions of rows chunk-by-chunk without loading everything into memory.
@@ -163,10 +273,12 @@ These are complementary paradigms. Use SQLite-based libraries for your app's tra
 
 | Guide | Description |
 |-------|-------------|
+| [API Reference](docs/API.md) | Complete API surface — every method, property, and type |
 | [Extensions](docs/extensions.md) | Configuration, available extensions, per-extension usage |
 | [Streaming & Appender](docs/streaming.md) | Chunk-by-chunk processing, bulk insert, ETL patterns |
 | [Type System](docs/types.md) | DuckDB → JavaScript type mapping for all 30+ types |
 | [Transactions](docs/transactions.md) | ACID transactions, batch execution, multi-database |
+| [Database Location](docs/database-location.md) | Storage paths, iCloud/Auto Backup, platform defaults |
 | [Full-Text Search](docs/fts.md) | BM25 indexing, stemmers, field search, limitations |
 | [Vector Search](docs/vss.md) | HNSW indexes, distance metrics, RAG patterns |
 | [Remote Data](docs/remote-data.md) | httpfs, Hugging Face datasets, S3, TLS config |
@@ -181,7 +293,7 @@ Fast forward to Feb 2026: with the help of LLMs, I rebuilt the entire library fr
 
 The stack: [Claude Opus 4 (claude-4-6)](https://www.anthropic.com/) running through [opencode](https://opencode.ai/), orchestrated by the [Get Shit Done](https://github.com/nicekitchen/get-shit-done) framework for structured multi-phase execution. The total inference cost was roughly **~$1,500**.
 
-But here's the thing — AI didn't make the decisions. Every architectural choice, every API design trade-off, every verification pass, every device test was done by a real human. The AI handled the volume; I handled the vision. That's the unlock: not replacing engineers, but giving one engineer the throughput of a team.
+But here's the thing — AI didn't make the decisions. I have extensive experience building React Native libraries, especially data libraries, and every architectural choice, every API design trade-off, every verification pass, every device test was done by a real human. The AI handled the volume; I handled the vision. That's the unlock: not replacing engineers, but giving one engineer the throughput of a team.
 
 We're at the beginning of something massive. A single developer with the right tools can now ship what used to require a dedicated team and months of runway. The barrier to building ambitious software is collapsing. This library is proof.
 
