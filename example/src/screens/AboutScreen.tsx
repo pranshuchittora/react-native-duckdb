@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Linking,
   ActivityIndicator,
+  Platform,
 } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { SvgXml } from 'react-native-svg'
@@ -15,6 +16,20 @@ import type { Database } from 'react-native-duckdb'
 import { SQLHighlighter } from '../components/SQLHighlighter'
 import { useTheme } from '../theme'
 import { brand } from '../theme/colors'
+
+function getRNVersion(): string {
+  const { major, minor, patch } = Platform.constants.reactNativeVersion
+  return `${major}.${minor}.${patch}`
+}
+
+function getIsNewArch(): boolean {
+  return (global as any).__turboModuleProxy != null ||
+    (global as any).nativeFabricUIManager != null
+}
+
+function getArchLabel(): string {
+  return getIsNewArch() ? 'New Architecture (Fabric + TurboModules)' : 'Legacy Architecture (Bridge)'
+}
 
 const LOGO_SVG = `<svg width="230" height="205" viewBox="0 0 230 205" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g clip-path="url(#clip0_1_2)">
@@ -62,8 +77,9 @@ export function AboutScreen() {
         const db = await HybridDuckDB.open(':memory:')
         dbRef.current = db
         const result = await db.execute('SELECT version() AS v')
-        if (!cancelled && result.rows.length > 0) {
-          setDuckdbVersion(String(result.rows[0][0]))
+        if (!cancelled && result.rowCount > 0) {
+          const rows = result.toRows()
+          setDuckdbVersion(String(rows[0].v))
         }
       } catch {
         if (!cancelled) setDuckdbVersion('unknown')
@@ -87,9 +103,12 @@ export function AboutScreen() {
       {/* Header */}
       <View style={styles.header}>
         <SvgXml xml={LOGO_SVG} width={80} height={72} />
-        <Text style={[styles.title, { color: colors.text }]}>react-native-duckdb</Text>
+        <Text style={[styles.title, { color: colors.text }]}>DuckDB Explorer</Text>
+        <Text style={[styles.tagline, { color: brand.yellow }]}>
+          The analytical database in your pocket
+        </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          DuckDB for React Native, built with Nitro Modules
+          Powered by react-native-duckdb & Nitro Modules
         </Text>
       </View>
 
@@ -130,6 +149,54 @@ export function AboutScreen() {
         <View style={styles.queryHint}>
           <SQLHighlighter sql="SELECT version()" />
         </View>
+      </View>
+
+      {/* Runtime Info */}
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Runtime</Text>
+      <View style={[styles.card, { backgroundColor: colors.surface }]}>
+        <View style={styles.versionRow}>
+          <View style={styles.versionLabel}>
+            <MaterialCommunityIcons name="react" size={20} color={brand.blue} />
+            <Text style={[styles.versionKey, { color: colors.text }]}>React Native</Text>
+          </View>
+          <Text style={[styles.versionValue, { color: brand.blue }]}>{getRNVersion()}</Text>
+        </View>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <View style={styles.versionRow}>
+          <View style={styles.versionLabel}>
+            <MaterialCommunityIcons name="chip" size={20} color={brand.green} />
+            <Text style={[styles.versionKey, { color: colors.text }]}>Architecture</Text>
+          </View>
+          <Text style={[styles.versionValue, { color: brand.green }]}>
+            {getIsNewArch() ? 'New Arch' : 'Bridge'}
+          </Text>
+        </View>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <View style={styles.versionRow}>
+          <View style={styles.versionLabel}>
+            <MaterialCommunityIcons name="cellphone" size={20} color={brand.purple} />
+            <Text style={[styles.versionKey, { color: colors.text }]}>Platform</Text>
+          </View>
+          <Text style={[styles.versionValue, { color: brand.purple }]}>
+            {Platform.OS} {Platform.Version}
+          </Text>
+        </View>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <View style={styles.versionRow}>
+          <View style={styles.versionLabel}>
+            <MaterialCommunityIcons name="lightning-bolt" size={20} color={brand.orange} />
+            <Text style={[styles.versionKey, { color: colors.text }]}>Bridge</Text>
+          </View>
+          <Text style={[styles.versionValue, { color: brand.orange }]}>
+            Nitro Modules (JSI)
+          </Text>
+        </View>
+      </View>
+      <View style={[styles.archBanner, { backgroundColor: isDark ? '#0A1A10' : '#E8F8EE', borderColor: brand.green }]}>
+        <MaterialCommunityIcons name="check-decagram" size={18} color={brand.green} />
+        <Text style={[styles.archText, { color: colors.text }]}>
+          {getArchLabel()}
+        </Text>
       </View>
 
       {/* Extensions */}
@@ -178,7 +245,10 @@ export function AboutScreen() {
       {/* License */}
       <View style={styles.footer}>
         <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-          MIT License • Made with Nitro Modules
+          MIT License • Built with React Native & DuckDB
+        </Text>
+        <Text style={[styles.footerText, { color: colors.textSecondary, marginTop: 2 }]}>
+          Powered by Nitro Modules for native C++ bindings
         </Text>
       </View>
 
@@ -191,7 +261,8 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 40 },
   header: { alignItems: 'center', marginBottom: 20, paddingTop: 8 },
   title: { fontSize: 22, fontWeight: '700', marginTop: 10 },
-  subtitle: { fontSize: 14, marginTop: 4, textAlign: 'center' },
+  tagline: { fontSize: 15, fontWeight: '600', marginTop: 6, textAlign: 'center', fontStyle: 'italic' },
+  subtitle: { fontSize: 13, marginTop: 4, textAlign: 'center' },
   starBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -210,6 +281,16 @@ const styles = StyleSheet.create({
   versionValue: { fontSize: 14, fontWeight: '700', fontFamily: 'monospace' },
   queryHint: { marginTop: 6, paddingTop: 8, opacity: 0.7 },
   divider: { height: 1, marginVertical: 6 },
+  archBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 20,
+    gap: 8,
+  },
+  archText: { flex: 1, fontSize: 13, fontWeight: '500' },
   extCard: {
     borderLeftWidth: 3,
     borderRadius: 10,
