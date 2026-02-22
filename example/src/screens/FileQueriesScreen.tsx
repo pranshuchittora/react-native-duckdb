@@ -3,11 +3,11 @@ import {
   View,
   Text,
   TextInput,
-  ScrollView,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native'
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
 import { HybridDuckDB } from 'react-native-duckdb'
 import { useTheme } from '../theme'
 import { ResultTable } from '../components/ResultTable'
@@ -187,7 +187,8 @@ export function FileQueriesScreen() {
   }, [query, ensureBooksTable])
 
   return (
-    <ScrollView
+    <KeyboardAwareScrollView
+      bottomOffset={50}
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.scrollContent}>
       {/* Header */}
@@ -319,7 +320,7 @@ export function FileQueriesScreen() {
           </View>
         </View>
       )}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   )
 }
 

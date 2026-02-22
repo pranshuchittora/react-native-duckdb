@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Clipboard,
 } from 'react-native'
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useRoute } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
@@ -154,7 +155,7 @@ export function DatasetDetailScreen() {
   const formatColor = FORMAT_COLORS[dataset.format] ?? { bg: brand.yellow + '33', text: brand.yellow }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+    <KeyboardAwareScrollView bottomOffset={50} style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.section}>
         <View style={styles.headerRow}>
@@ -327,7 +328,7 @@ export function DatasetDetailScreen() {
       )}
 
       <View style={{ height: 40 }} />
-    </ScrollView>
+    </KeyboardAwareScrollView>
   )
 }
 

@@ -11,6 +11,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native'
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { HybridDuckDB } from 'react-native-duckdb'
 import { useTheme } from '../theme'
@@ -200,7 +201,7 @@ export function QueryRunnerScreen({ navigation, route }: Props) {
         </View>
       )}
 
-      <ScrollView style={styles.body} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView bottomOffset={50} style={styles.body} keyboardShouldPersistTaps="handled">
         {/* SQL Editor */}
         <View style={[styles.editorContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.promptChar, { color: brand.yellow }]}>D</Text>
@@ -358,7 +359,7 @@ export function QueryRunnerScreen({ navigation, route }: Props) {
         )}
 
         <View style={{ height: 40 }} />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   )
 }

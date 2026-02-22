@@ -1,5 +1,6 @@
 import React from 'react'
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native'
+import { KeyboardProvider } from 'react-native-keyboard-controller'
 import './tests/build.test'
 import './tests/lifecycle.test'
 import './tests/errors.test'
@@ -49,7 +50,9 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <KeyboardProvider>
+        <AppContent />
+      </KeyboardProvider>
     </ThemeProvider>
   )
 }
