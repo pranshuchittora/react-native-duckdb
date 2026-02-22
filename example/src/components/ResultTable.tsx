@@ -13,6 +13,7 @@ interface Props {
   columns: string[]
   rows: any[][]
   rowCount?: number
+  maxHeight?: number
 }
 
 const MIN_COL_WIDTH = 80
@@ -29,7 +30,9 @@ function estimateWidth(col: string, rows: any[][]): number {
   return Math.max(MIN_COL_WIDTH, Math.min(MAX_COL_WIDTH, estimated))
 }
 
-export function ResultTable({ columns, rows, rowCount }: Props) {
+const DEFAULT_MAX_HEIGHT = 400
+
+export function ResultTable({ columns, rows, rowCount, maxHeight = DEFAULT_MAX_HEIGHT }: Props) {
   const { colors } = useTheme()
 
   const colWidths = useMemo(() => {
@@ -74,7 +77,7 @@ export function ResultTable({ columns, rows, rowCount }: Props) {
 
   return (
     <View style={[styles.container, { borderColor: colors.border }]}>
-      <ScrollView horizontal showsHorizontalScrollIndicator>
+      <ScrollView horizontal showsHorizontalScrollIndicator nestedScrollEnabled>
         <View style={{ width: totalWidth }}>
           <View style={[styles.headerRow, { backgroundColor: colors.surfaceAlt, borderBottomColor: colors.border }]}>
             {columns.map((col, i) => (
@@ -90,6 +93,8 @@ export function ResultTable({ columns, rows, rowCount }: Props) {
             renderItem={renderRow}
             keyExtractor={(_, i) => String(i)}
             getItemLayout={(_, index) => ({ length: 36, offset: 36 * index, index })}
+            nestedScrollEnabled
+            style={{ maxHeight }}
           />
         </View>
       </ScrollView>
