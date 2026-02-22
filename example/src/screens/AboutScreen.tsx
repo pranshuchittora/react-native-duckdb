@@ -14,6 +14,7 @@ import { SvgXml } from 'react-native-svg'
 import { HybridDuckDB } from 'react-native-duckdb'
 import type { Database } from 'react-native-duckdb'
 import { SQLHighlighter } from '../components/SQLHighlighter'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../theme'
 import { brand } from '../theme/colors'
 
@@ -66,6 +67,7 @@ const LINKS = [
 
 export function AboutScreen() {
   const { colors, isDark } = useTheme()
+  const insets = useSafeAreaInsets()
   const dbRef = useRef<Database | null>(null)
   const [duckdbVersion, setDuckdbVersion] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -98,7 +100,7 @@ export function AboutScreen() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.content}>
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}>
 
       {/* Header */}
       <View style={styles.header}>
