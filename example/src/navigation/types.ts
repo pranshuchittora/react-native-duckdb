@@ -5,6 +5,7 @@ export type RootTabParamList = {
   Explorer: undefined
   Query: undefined
   Datasets: undefined
+  About: undefined
 }
 
 export type ExplorerStackParamList = {

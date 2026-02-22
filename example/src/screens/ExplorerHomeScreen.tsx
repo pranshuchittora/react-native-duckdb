@@ -18,25 +18,11 @@ interface FeatureCard {
 
 const FEATURES: FeatureCard[] = [
   {
-    title: 'Full-Text Search',
-    icon: 'text-search',
-    accent: '#00C770',
-    description: 'Search text with BM25 ranking',
-    screen: 'FTSExplorer',
-  },
-  {
     title: 'Vector Search',
     icon: 'vector-combine',
     accent: '#7D66FF',
     description: 'Similarity search with embeddings',
     screen: 'VSSExplorer',
-  },
-  {
-    title: 'Remote Files',
-    icon: 'cloud-download-outline',
-    accent: '#2EAFFF',
-    description: 'Query Parquet/CSV/JSON over HTTP',
-    screen: 'RemoteFiles',
   },
   {
     title: 'File Queries',
@@ -72,6 +58,20 @@ const FEATURES: FeatureCard[] = [
     accent: '#00C770',
     description: 'Attach and query multiple DBs',
     screen: 'AttachDatabase',
+  },
+  {
+    title: 'Remote Files',
+    icon: 'cloud-download-outline',
+    accent: '#2EAFFF',
+    description: 'Query Parquet/CSV/JSON over HTTP',
+    screen: 'RemoteFiles',
+  },
+  {
+    title: 'Full-Text Search',
+    icon: 'text-search',
+    accent: '#00C770',
+    description: 'Search text with BM25 ranking',
+    screen: 'FTSExplorer',
   },
 ]
 

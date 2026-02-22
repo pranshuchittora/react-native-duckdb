@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useTheme } from '../theme'
 import { TestsScreen } from '../screens/TestsScreen'
+import { AboutScreen } from '../screens/AboutScreen'
 import { ExplorerStack } from './ExplorerStack'
 import { QueryStack } from './QueryStack'
 import { DatasetStack } from './DatasetStack'
@@ -30,6 +31,15 @@ export function TabNavigator() {
         tabBarInactiveTintColor: colors.tabBarInactiveTint,
       }}>
       <Tab.Screen
+        name="Datasets"
+        component={DatasetStack}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="database-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
         name="Explorer"
         component={ExplorerStack}
         options={{
@@ -48,20 +58,20 @@ export function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Datasets"
-        component={DatasetStack}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="database-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen
         name="Tests"
         component={TestsScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="check-circle-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="About"
+        component={AboutScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="information-outline" color={color} size={size} />
           ),
         }}
       />
