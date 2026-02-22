@@ -24,6 +24,26 @@ The analytical database for React Native. Run OLAP queries, full-text search, an
 - Query cancellation, progress callbacks, JSON profiling
 - Expo config plugin for managed workflow
 
+## Try It Now
+
+Download DuckDB Explorer — a free companion app to try everything before writing a single line of code. Interactive SQL runner, Hugging Face dataset browser, full-text search, vector similarity search, and more.
+
+<p align="center">
+  <a href="https://apps.apple.com/app/duckdb-explorer/id6742978562"><img src="https://img.shields.io/badge/App_Store-0D96F6?style=for-the-badge&logo=app-store&logoColor=white" alt="App Store" /></a>
+  &nbsp;
+  <a href="https://play.google.com/store/apps/details?id=com.rnduckdbexample"><img src="https://img.shields.io/badge/Google_Play-414141?style=for-the-badge&logo=google-play&logoColor=white" alt="Google Play" /></a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/screenshot-1.png" width="13%" />
+  <img src="docs/screenshots/screenshot-2.png" width="13%" />
+  <img src="docs/screenshots/screenshot-3.png" width="13%" />
+  <img src="docs/screenshots/screenshot-4.png" width="13%" />
+  <img src="docs/screenshots/screenshot-5.png" width="13%" />
+  <img src="docs/screenshots/screenshot-6.png" width="13%" />
+  <img src="docs/screenshots/screenshot-7.png" width="13%" />
+</p>
+
 ## Installation
 
 ```bash
