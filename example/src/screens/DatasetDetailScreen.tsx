@@ -165,6 +165,27 @@ export function DatasetDetailScreen() {
           </View>
         </View>
         <Text style={[styles.description, { color: colors.textSecondary }]}>{dataset.description}</Text>
+        {dataset.source === 'trending' && (
+          <View style={styles.metaRow}>
+            {dataset.author && (
+              <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                by {dataset.author}
+              </Text>
+            )}
+            <View style={styles.metaStats}>
+              {dataset.likes != null && (
+                <Text style={[styles.metaStat, { color: colors.textSecondary }]}>
+                  ❤️ {dataset.likes.toLocaleString()}
+                </Text>
+              )}
+              {dataset.downloads != null && (
+                <Text style={[styles.metaStat, { color: colors.textSecondary }]}>
+                  ⬇️ {dataset.downloads.toLocaleString()}
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
         <TouchableOpacity onPress={() => Clipboard.setString(dataset.parquetPath)}>
           <Text style={[styles.pathText, { color: colors.textSecondary, backgroundColor: colors.surfaceAlt }]}>
             {dataset.parquetPath}
@@ -182,6 +203,11 @@ export function DatasetDetailScreen() {
         {schemaError && (
           <View style={[styles.errorBox, { borderColor: colors.error }]}>
             <Text style={[styles.errorText, { color: colors.error }]}>{schemaError}</Text>
+            {dataset.source === 'trending' && (
+              <Text style={[styles.errorHint, { color: colors.textSecondary }]}>
+                This dataset may have a non-standard file layout. Try entering a specific file path.
+              </Text>
+            )}
             <Text style={[styles.errorSql, { color: colors.textSecondary }]}>
               DESCRIBE SELECT * FROM '{dataset.parquetPath}' LIMIT 0
             </Text>
@@ -315,6 +341,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   rowEstimate: { fontSize: 12, fontStyle: 'italic', marginTop: 4 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 },
+  metaStats: { flexDirection: 'row', gap: 12 },
+  metaStat: { fontSize: 12 },
+  metaText: { fontSize: 12 },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
   schemaTable: { borderWidth: 1, borderRadius: 6, overflow: 'hidden' },
   schemaHeaderRow: {
@@ -337,6 +367,7 @@ const styles = StyleSheet.create({
   schemaCellNull: { flex: 1, textAlign: 'center' },
   errorBox: { borderWidth: 1, borderRadius: 6, padding: 12, marginTop: 4 },
   errorText: { fontSize: 13, fontWeight: '600' },
+  errorHint: { fontSize: 12, fontStyle: 'italic', marginTop: 6 },
   errorSql: { fontSize: 11, fontFamily: 'monospace', marginTop: 6 },
   queryChips: { marginBottom: 4 },
   queryChip: {
