@@ -78,10 +78,11 @@ export function AboutScreen() {
       try {
         const db = await HybridDuckDB.open(':memory:')
         dbRef.current = db
-        const result = await db.execute('SELECT version() AS v')
+        const result = await db.execute('SELECT version()')
         if (!cancelled && result.rowCount > 0) {
+          const colName = result.columnNames[0]
           const rows = result.toRows()
-          setDuckdbVersion(String(rows[0].v))
+          setDuckdbVersion(String(rows[0][colName]))
         }
       } catch {
         if (!cancelled) setDuckdbVersion('unknown')
