@@ -173,10 +173,22 @@ These are complementary paradigms. Use SQLite-based libraries for your app's tra
 | [Expo Setup](docs/expo.md) | Config plugin, extension flow, migration guide |
 | [Bare Workflow](docs/bare-workflow.md) | iOS/Android setup without Expo |
 
+## Built with AI
+
+I started working on this library in late 2023. The initial prototype took a full week and could barely run basic SQL statements — no extensions, no streaming, no type system. It proved the concept but was nowhere near production quality.
+
+Fast forward to 2025: with the help of LLMs, I rebuilt the entire library from scratch — production-grade, fully documented, with 11 statically-linked extensions, 30+ type mappings, streaming, vector search, full-text search, and an example app that doubles as a DuckDB dev studio. **The entire rebuild took under one week.**
+
+The stack: [Claude Opus 4 (claude-4-6)](https://www.anthropic.com/) running through [opencode](https://opencode.ai/), orchestrated by the [Get Shit Done](https://github.com/nicekitchen/get-shit-done) framework for structured multi-phase execution. The total inference cost was roughly **~$1,500**.
+
+But here's the thing — AI didn't make the decisions. Every architectural choice, every API design trade-off, every verification pass, every device test was done by a real human. The AI handled the volume; I handled the vision. That's the unlock: not replacing engineers, but giving one engineer the throughput of a team.
+
+We're at the beginning of something massive. A single developer with the right tools can now ship what used to require a dedicated team and months of runway. The barrier to building ambitious software is collapsing. This library is proof.
+
 ## License
 
 MIT
 
 ---
 
-<sub>Inspired by [react-native-nitro-sqlite](https://github.com/margelo/react-native-nitro-sqlite) and [op-sqlite](https://github.com/OP-Engineering/op-sqlite). Built with [DuckDB](https://duckdb.org) and [Nitro Modules](https://nitro.margelo.com). This project was built with AI (Claude) via the [Get Shit Done](https://github.com/gsd-build/get-shit-done) framework — every architectural decision was human-made. See [RELEASE.md](RELEASE.md) for release security details.</sub>
+<sub>Inspired by [react-native-nitro-sqlite](https://github.com/margelo/react-native-nitro-sqlite) and [op-sqlite](https://github.com/OP-Engineering/op-sqlite). Built with [DuckDB](https://duckdb.org) and [Nitro Modules](https://nitro.margelo.com). See [RELEASE.md](RELEASE.md) for release security details.</sub>
