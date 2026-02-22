@@ -14,6 +14,7 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { HybridDuckDB } from 'react-native-duckdb'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../theme'
 import { ResultTable } from '../components/ResultTable'
 import { SQLHighlighter } from '../components/SQLHighlighter'
@@ -64,6 +65,7 @@ interface QueryResult {
 
 export function QueryRunnerScreen({ navigation, route }: Props) {
   const { colors, brand, isDark } = useTheme()
+  const insets = useSafeAreaInsets()
   const [sql, setSql] = useState('')
   const [result, setResult] = useState<QueryResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -164,7 +166,7 @@ export function QueryRunnerScreen({ navigation, route }: Props) {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Query Runner</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -373,7 +375,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 56 : 16,
+    paddingTop: 0,
     paddingBottom: 12,
     borderBottomWidth: 1,
   },

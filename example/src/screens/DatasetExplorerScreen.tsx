@@ -7,11 +7,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  SafeAreaView,
   Animated,
   type ListRenderItem,
 } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { HybridDuckDB } from 'react-native-duckdb'
@@ -61,6 +61,7 @@ function SkeletonCard({ colors }: { colors: any }) {
 
 export function DatasetExplorerScreen() {
   const { colors, brand, isDark } = useTheme()
+  const insets = useSafeAreaInsets()
   const navigation = useNavigation<NavProp>()
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState<TabType>('Trending')
@@ -377,18 +378,18 @@ export function DatasetExplorerScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.center, { backgroundColor: colors.background }]}>
+      <View style={[styles.center, { backgroundColor: colors.background, paddingTop: insets.top }]}>
         <ActivityIndicator size="large" color={brand.yellow} />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
           Loading httpfs extension...
         </Text>
-      </SafeAreaView>
+      </View>
     )
   }
 
   if (httpfsError) {
     return (
-      <SafeAreaView style={[styles.center, { backgroundColor: colors.background }]}>
+      <View style={[styles.center, { backgroundColor: colors.background, paddingTop: insets.top }]}>
         <Text style={[styles.errorTitle, { color: colors.error }]}>Extension Error</Text>
         <Text style={[styles.errorMsg, { color: colors.textSecondary }]}>{httpfsError}</Text>
         <TouchableOpacity
@@ -396,13 +397,13 @@ export function DatasetExplorerScreen() {
           onPress={loadHttpfs}>
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
     )
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={[styles.title, { color: colors.text }]}>Datasets</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Explore Hugging Face datasets with DuckDB
@@ -474,7 +475,7 @@ export function DatasetExplorerScreen() {
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
       />
-    </SafeAreaView>
+    </View>
   )
 }
 
