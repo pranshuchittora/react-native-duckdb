@@ -50,7 +50,7 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <KeyboardProvider>
+      <KeyboardProvider statusBarTranslucent={false} navigationBarTranslucent={false}>
         <AppContent />
       </KeyboardProvider>
     </ThemeProvider>
