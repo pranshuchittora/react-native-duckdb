@@ -455,7 +455,8 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     lineHeight: 20,
     paddingHorizontal: 8,
-    paddingVertical: 8,
+    paddingTop: 8,
+    paddingBottom: 8,
     textAlignVertical: 'top',
   },
   highlighterOverlay: {
