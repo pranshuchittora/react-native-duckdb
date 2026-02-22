@@ -293,7 +293,7 @@ Fast forward to Feb 2026: with the help of LLMs, I rebuilt the entire library fr
 
 The stack: [Claude Opus 4 (claude-4-6)](https://www.anthropic.com/) running through [opencode](https://opencode.ai/), orchestrated by the [Get Shit Done](https://github.com/nicekitchen/get-shit-done) framework for structured multi-phase execution. The total inference cost was roughly **~$1,500**.
 
-But here's the thing — AI didn't make the decisions. I have extensive experience building React Native libraries, especially data libraries, and every architectural choice, every API design trade-off, every verification pass, every device test was done by a real human. The AI handled the volume; I handled the vision. That's the unlock: not replacing engineers, but giving one engineer the throughput of a team.
+But here's the thing — AI didn't make the decisions. I have extensive experience building React Native libraries, especially data libraries, and every architectural choice, every API design trade-off, every verification pass, every device test was done by a real human. The AI handled the volume; I handled the vision.
 
 We're at the beginning of something massive. A single developer with the right tools can now ship what used to require a dedicated team and months of runway. The barrier to building ambitious software is collapsing. This library is proof.
 
