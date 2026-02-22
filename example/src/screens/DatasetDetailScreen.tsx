@@ -18,6 +18,7 @@ import { SQLHighlighter } from '../components/SQLHighlighter'
 import { QueryStatusBar } from '../components/StatusBar'
 import type { DatasetStackParamList } from '../navigation/types'
 import type { Dataset } from '../data/datasets'
+import { FORMAT_COLORS } from '../data/datasets'
 
 type DetailRoute = RouteProp<DatasetStackParamList, 'DatasetDetail'>
 
@@ -149,11 +150,7 @@ export function DatasetDetailScreen() {
     }
   }, [currentQuery, executeQuery])
 
-  const categoryColor = {
-    tabular: '#FFF100',
-    nlp: '#7D66FF',
-    benchmark: '#FF6900',
-  }[dataset.category] ?? brand.yellow
+  const formatColor = FORMAT_COLORS[dataset.format] ?? { bg: brand.yellow + '33', text: brand.yellow }
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -161,9 +158,9 @@ export function DatasetDetailScreen() {
       <View style={styles.section}>
         <View style={styles.headerRow}>
           <Text style={[styles.datasetName, { color: colors.text }]}>{dataset.icon} {dataset.name}</Text>
-          <View style={[styles.badge, { backgroundColor: categoryColor + '22' }]}>
-            <Text style={[styles.badgeText, { color: isDark ? categoryColor : '#1F2328' }]}>
-              {dataset.category}
+          <View style={[styles.badge, { backgroundColor: formatColor.bg }]}>
+            <Text style={[styles.badgeText, { color: formatColor.text }]}>
+              {dataset.format.toUpperCase()}
             </Text>
           </View>
         </View>
